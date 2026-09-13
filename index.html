@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nostrann</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="author" content="Yann Frette">
+<meta name="theme-color" content="#0a0714">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nostrann">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+:root{
+  --bg:#0a0714;
+  --bg-deep:#050309;
+  --panel:#15112a;
+  --panel-2:#1c1638;
+  --line:#332a52;
+  --violet:#7452dc;
+  --violet-glow:#b8a3ff;
+  --gold:#d9b76a;
+  --gold-soft:#f0d99a;
+  --text:#ede8f7;
+  --muted:#9c93bd;
+  --muted-2:#6d6592;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(ellipse 900px 600px at 50% -10%, rgba(116,82,220,.22), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 85% 15%, rgba(217,183,106,.08), transparent 55%),
+    radial-gradient(ellipse 800px 700px at 10% 85%, rgba(116,82,220,.14), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Spectral',Georgia,'Times New Roman',serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  /* vignette */
+  content:"";
+  position:fixed; inset:0; pointer-events:none; z-index:1;
+  background:radial-gradient(ellipse 1200px 900px at 50% 40%, transparent 55%, var(--bg-deep) 100%);
+}
+
+canvas#stars{position:fixed; inset:0; width:100%; height:100%; z-index:0; opacity:.85}
+
+.wrap{
+  position:relative; z-index:2;
+  max-width:640px; margin:0 auto;
+  padding:48px 20px 64px;
+  display:flex; flex-direction:column; align-items:center;
+  gap:28px;
+}
+
+.mark{
+  font-family:'Cinzel',Georgia,serif;
+  font-weight:900;
+  font-size:clamp(2.1rem, 7vw, 3rem);
+  letter-spacing:.14em;
+  text-align:center;
+  margin:0;
+  background:linear-gradient(180deg, var(--gold-soft), var(--gold) 55%, #a9843f);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 40px rgba(217,183,106,.25);
+  text-wrap:balance;
+}
+.hero-sub{ display:flex; flex-direction:column; gap:5px; margin-top:-18px }
+.tagline{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:.72rem;
+  letter-spacing:.32em;
+  text-transform:uppercase;
+  color:var(--muted);
+  text-align:center;
+  margin:0;
+}
+.signature{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.68rem; letter-spacing:.06em; color:var(--muted-2);
+  text-align:center; margin:0;
+}
+
+/* ---- The sigil / Nostrann's presence ---- */
+.stage-emblem{
+  position:relative;
+  width:min(240px, 54vw);
+  height:min(240px, 54vw);
+  display:grid; place-items:center;
+  margin:6px 0 2px;
+}
+.emblem-glow{
+  position:absolute; inset:-40%;
+  background:radial-gradient(circle, rgba(184,163,255,.35), rgba(217,183,106,.12) 45%, transparent 70%);
+  filter:blur(6px);
+  opacity:.55;
+  transition:opacity 1.1s ease, transform 1.1s ease;
+  border-radius:50%;
+}
+.stage-emblem.awake .emblem-glow{ opacity:1; transform:scale(1.15) }
+
+.emblem-svg{ width:100%; height:100%; position:relative; z-index:1 }
+.ring-outer{ transform-origin:50% 50%; animation:spin 48s linear infinite }
+.ring-inner{ transform-origin:50% 50%; animation:spin 34s linear infinite reverse }
+.stage-emblem.awake .ring-outer{ animation-duration:14s }
+.stage-emblem.awake .ring-inner{ animation-duration:9s }
+@keyframes spin{ to{ transform:rotate(360deg) } }
+
+.iris{ transition:opacity 1.2s ease, transform 1.2s ease; transform-origin:50% 50%; opacity:.55 }
+.stage-emblem.awake .iris{ opacity:1 }
+.pupil{ animation:blink 6.5s ease-in-out infinite }
+.stage-emblem.awake .pupil{ animation:pulse-pupil 2.6s ease-in-out infinite }
+@keyframes blink{ 0%,92%,100%{ transform:scaleY(1) } 96%{ transform:scaleY(.08) } }
+@keyframes pulse-pupil{ 0%,100%{ r:5.5 } 50%{ r:7.5 } }
+
+/* ---- stage / card ---- */
+.stage-card{
+  width:100%;
+  background:linear-gradient(180deg, var(--panel), var(--panel-2));
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:26px 24px 24px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.03);
+  position:relative;
+}
+.stage-card::before{
+  content:"";
+  position:absolute; inset:0; border-radius:18px; padding:1px;
+  background:linear-gradient(135deg, rgba(217,183,106,.35), transparent 30%, transparent 70%, rgba(116,82,220,.4));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events:none;
+}
+
+.eyebrow{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:.68rem; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--gold); text-align:center; margin:0 0 18px;
+}
+body.is-revealing .eyebrow{ display:none }
+
+/* form */
+.field{ display:flex; flex-direction:column; gap:7px; margin-bottom:16px }
+.field label{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+}
+.field textarea,.field input{
+  font-family:'Spectral',Georgia,serif;
+  font-size:1.05rem;
+  background:rgba(5,4,10,.55);
+  border:1px solid var(--line);
+  border-radius:10px;
+  color:var(--text);
+  padding:12px 14px;
+  resize:none;
+  width:100%;
+}
+.field textarea:focus,.field input:focus{ outline:none; border-color:var(--violet-glow); box-shadow:0 0 0 3px rgba(116,82,220,.18) }
+.field textarea::placeholder,.field input::placeholder{ color:var(--muted-2) }
+.row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+@media (max-width:420px){ .row2{ grid-template-columns:1fr } }
+
+/* theme choice chips */
+.theme-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px }
+@media (max-width:420px){ .theme-grid{ grid-template-columns:repeat(2,1fr) } }
+.theme-chip{
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.84rem; letter-spacing:.01em; color:var(--muted);
+  background:rgba(5,4,10,.5);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:13px 6px 11px;
+  cursor:pointer; text-align:center;
+  transition:border-color .15s ease, color .15s ease, background .15s ease, transform .15s ease;
+}
+.theme-chip .tg{ font-size:1.15rem; color:var(--gold-soft); line-height:1 }
+.theme-chip:hover{ border-color:var(--violet-glow); color:var(--text) }
+.theme-chip.selected{
+  border-color:var(--gold);
+  background:linear-gradient(180deg, rgba(217,183,106,.16), rgba(116,82,220,.12));
+  color:var(--gold-soft);
+  transform:translateY(-1px);
+}
+.question-grid{ grid-template-columns:1fr; gap:7px }
+.question-chip{
+  flex-direction:row; align-items:center; text-align:left;
+  padding:11px 14px; font-size:.96rem; line-height:1.4;
+}
+
+/* verdict banner — la réponse franche */
+.verdict-banner{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 13px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:linear-gradient(135deg, rgba(217,183,106,.09), rgba(116,82,220,.08));
+  opacity:0; transform:scale(.96);
+  animation:verdictIn .5s ease forwards; animation-delay:.1s;
+}
+@keyframes verdictIn{ to{ opacity:1; transform:scale(1) } }
+.verdict-icon{
+  flex:0 0 auto; width:32px; height:32px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%; border:1.5px solid currentColor;
+  font-size:1rem; font-weight:700;
+}
+.verdict-word{
+  font-family:'Cinzel',Georgia,serif; font-weight:700;
+  font-size:1.18rem; letter-spacing:.09em; margin:0 0 2px;
+  color:var(--gold-soft);
+}
+.verdict-sub{ margin:0; font-size:.86rem; color:var(--muted); line-height:1.35 }
+.verdict-reason{ margin:4px 0 0; font-size:.78rem; color:var(--gold-soft); line-height:1.35; font-style:italic }
+.verdict-banner.oui{ border-color:rgba(163,201,153,.55) }
+.verdict-banner.oui .verdict-icon{ color:#a3c999 }
+.verdict-banner.non{ border-color:rgba(214,122,122,.5) }
+.verdict-banner.non .verdict-icon{ color:#d68585 }
+.verdict-banner.conditionnel{ border-color:rgba(184,163,255,.5) }
+.verdict-banner.conditionnel .verdict-icon{ color:var(--violet-glow) }
+
+.consult-btn{
+  width:100%;
+  font-family:'Cinzel',Georgia,serif;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  font-size:.96rem;
+  padding:14px 20px;
+  border-radius:12px;
+  border:1px solid rgba(217,183,106,.55);
+  background:linear-gradient(180deg, rgba(217,183,106,.16), rgba(116,82,220,.14));
+  color:var(--gold-soft);
+  cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.consult-btn:hover{ border-color:var(--gold); box-shadow:0 8px 28px -10px rgba(217,183,106,.45); transform:translateY(-1px) }
+.consult-btn:active{ transform:translateY(0) }
+.consult-btn:disabled{ opacity:.5; cursor:default; transform:none; box-shadow:none }
+
+.ghost-btn{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.92rem;
+  color:var(--muted);
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:9px 18px;
+  cursor:pointer;
+  transition:color .15s ease, border-color .15s ease;
+}
+.ghost-btn:hover{ color:var(--gold-soft); border-color:var(--gold) }
+
+/* ritual status */
+.ritual{ display:none; flex-direction:column; align-items:center; gap:10px; padding:10px 0 4px }
+.ritual.show{ display:flex }
+.ritual-text{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:.82rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); min-height:1.4em; text-align:center;
+  opacity:0; animation:fadeText 1.6s ease-in-out infinite;
+}
+@keyframes fadeText{ 0%,100%{ opacity:0 } 15%,85%{ opacity:1 } }
+.ritual-dots{ display:flex; gap:6px }
+.ritual-dots span{
+  width:5px; height:5px; border-radius:50%; background:var(--gold);
+  opacity:.35; animation:dotPulse 1.4s ease-in-out infinite;
+}
+.ritual-dots span:nth-child(2){ animation-delay:.18s }
+.ritual-dots span:nth-child(3){ animation-delay:.36s }
+@keyframes dotPulse{ 0%,100%{ opacity:.25; transform:scale(1) } 50%{ opacity:1; transform:scale(1.5) } }
+
+/* reveal */
+.reveal{ display:none; flex-direction:column; gap:8px }
+.reveal.show{ display:flex }
+body.is-revealing .reveal.show{
+  max-height:calc(100vh - 52px); overflow-y:auto; overflow-x:hidden;
+  padding-right:3px;
+}
+
+/* three-card spread */
+.spread{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:0 auto }
+.spread-card{ display:flex; flex-direction:column; align-items:center; gap:3px }
+.spread-label{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.64rem; letter-spacing:.02em; text-transform:uppercase; color:var(--muted);
+  text-align:center; min-height:1.3em; line-height:1.2;
+}
+.spread .card-flip{ width:100%; height:80px; margin:0 }
+.spread .card-front{ gap:2px }
+.spread .card-front .glyph{ font-size:1rem }
+.spread .card-front .cname{ font-size:.62rem }
+.spread .card-front .corient{ font-size:.48rem }
+.spread .card-back{ font-size:.95rem }
+
+.card-flip{
+  perspective:900px;
+  width:118px; height:180px;
+  margin:2px auto 4px;
+}
+.card-flip-inner{
+  position:relative; width:100%; height:100%;
+  transform-style:preserve-3d;
+  transition:transform 1.05s cubic-bezier(.2,.8,.2,1);
+}
+.card-flip.flipped .card-flip-inner{ transform:rotateY(180deg) }
+.card-face{
+  position:absolute; inset:0; backface-visibility:hidden;
+  border-radius:12px; border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  padding:10px;
+}
+.card-back{
+  background:
+    repeating-linear-gradient(45deg, rgba(217,183,106,.08) 0 2px, transparent 2px 10px),
+    linear-gradient(160deg, #241c44, #14102a);
+  font-family:'Cinzel',serif; color:var(--gold); font-size:1.6rem;
+}
+.card-front{
+  transform:rotateY(180deg);
+  background:linear-gradient(160deg, #241c44, #150f2a);
+  flex-direction:column; gap:6px;
+}
+.card-front .glyph{ font-size:1.7rem; color:var(--gold-soft) }
+.card-front .cname{ font-family:'Cinzel',serif; font-size:.86rem; letter-spacing:.04em; color:var(--text); line-height:1.25 }
+.card-front .corient{ font-family:system-ui,sans-serif; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted) }
+
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(5px) } to{ opacity:1; transform:translateY(0) } }
+
+.bilan-question{
+  font-family:'Cinzel',Georgia,serif; font-size:1.02rem; font-style:italic; font-weight:600;
+  line-height:1.42; text-align:center; color:var(--gold-soft); max-width:56ch; margin:0 auto;
+  padding-bottom:8px; border-bottom:1px solid rgba(217,183,106,.28);
+  opacity:0; animation:fadeUp .55s ease forwards;
+}
+.bilan-intro{
+  font-size:1.06rem; line-height:1.5; text-align:left; max-width:62ch; margin:0 auto;
+  opacity:0; animation:fadeUp .6s ease forwards; animation-delay:.3s;
+}
+.bilan-present{
+  font-size:1.06rem; line-height:1.54; text-align:left; max-width:62ch; margin:0 auto;
+  opacity:0; animation:fadeUp .55s ease forwards; animation-delay:.6s;
+}
+.bilan-path{
+  font-size:1.06rem; line-height:1.54; text-align:left; max-width:62ch; margin:0 auto;
+  padding-left:12px; border-left:2px solid rgba(217,183,106,.5);
+  opacity:0; animation:fadeUp .55s ease forwards; animation-delay:.9s;
+}
+.bilan-path-lead{
+  font-family:'Cinzel',Georgia,serif; font-weight:700; letter-spacing:.02em;
+  color:var(--gold-soft); font-size:1rem;
+}
+.bilan-advice{
+  font-size:1.05rem; line-height:1.5; text-align:left; max-width:62ch; margin:0 auto;
+  color:var(--gold-soft); font-weight:600;
+  opacity:0; animation:fadeUp .55s ease forwards; animation-delay:1.2s;
+}
+.bilan-advice::before{ content:"✦ "; color:var(--gold) }
+.bilan-closer{
+  font-size:.94rem; line-height:1.5; text-align:center; font-style:italic; color:var(--muted);
+  max-width:56ch; margin:2px auto 0;
+  opacity:0; animation:fadeUp .6s ease forwards; animation-delay:1.5s;
+}
+
+.astro-note{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.82rem; color:var(--muted); text-align:center;
+  border-top:1px solid var(--line); padding-top:10px; margin:0;
+  line-height:1.48;
+}
+
+.lucky-row{ text-align:center; padding-top:0 }
+.lucky-title{
+  font-family:'Cinzel',Georgia,serif; font-size:.68rem; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--gold); margin:0 0 7px;
+}
+.lucky-balls{ display:flex; justify-content:center; align-items:center; gap:7px; flex-wrap:wrap }
+.lucky-ball{
+  width:30px; height:30px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Cinzel',Georgia,serif; font-weight:700; font-size:.8rem;
+  background:linear-gradient(160deg, var(--panel-2), var(--panel));
+  border:1px solid rgba(217,183,106,.5); color:var(--gold-soft);
+}
+.lucky-ball.bonus{ border-color:rgba(184,163,255,.6); color:var(--violet-glow); margin-left:5px }
+.lucky-disclaimer{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.7rem; color:var(--muted-2); font-style:italic; line-height:1.4;
+  margin:6px auto 0; max-width:42ch;
+}
+
+.actions{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:0 }
+.quit-btn{ opacity:.72 }
+
+.world-toggle{
+  display:block; margin:2px auto 0;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif; font-size:.78rem;
+  color:var(--gold-soft); background:transparent; border:1px solid rgba(217,183,106,.35);
+  border-radius:999px; padding:7px 16px; cursor:pointer;
+  transition:border-color .15s ease, color .15s ease;
+}
+.world-toggle:hover{ border-color:var(--gold); color:var(--gold) }
+.world-panel{ display:none; flex-direction:column; gap:10px; text-align:left; border-top:1px solid var(--line); padding-top:12px; margin-top:2px }
+.world-panel.show{ display:flex }
+.world-block{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:11px 14px }
+.world-block-title{
+  font-family:'Cinzel',Georgia,serif; font-size:.68rem; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--gold); margin:0 0 6px;
+}
+.world-block p{ font-size:.85rem; line-height:1.52; color:var(--text); margin:0 }
+
+.lock-message{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.85rem; line-height:1.5; text-align:center; color:var(--gold-soft);
+  background:var(--panel-2); border:1px solid rgba(217,183,106,.4); border-radius:12px;
+  padding:12px 16px; margin:2px 0 0;
+}
+
+footer{
+  position:relative; z-index:2;
+  text-align:center; color:var(--muted-2);
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:.72rem; letter-spacing:.02em;
+  padding:0 24px 8px; max-width:480px; line-height:1.5;
+}
+.contact-link{
+  display:inline-block; margin-top:4px;
+  color:var(--gold-soft); text-decoration:none; border-bottom:1px solid rgba(217,183,106,.35);
+}
+.contact-link:hover, .contact-link:focus-visible{ color:var(--gold); border-bottom-color:var(--gold) }
+
+/* mode compact : la révélation doit tenir sur un seul écran */
+body.is-revealing .mark,
+body.is-revealing .hero-sub,
+body.is-revealing .stage-emblem{ display:none }
+body.is-revealing .wrap{ gap:8px; padding:14px 14px 10px }
+body.is-revealing .stage-card{ padding:12px 14px 12px }
+body.is-revealing footer{ display:none }
+body.is-revealing{ min-height:0 }
+
+@media (prefers-reduced-motion:reduce){
+  *{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important }
+}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<div class="wrap">
+  <h1 class="mark">NOSTRANN</h1>
+  <div class="hero-sub">
+    <p class="tagline">L'oracle qui lit les cartes et le ciel</p>
+    <p class="signature">Une création divinatoire de Yann Frette</p>
+  </div>
+
+  <div class="stage-emblem" id="emblem">
+    <div class="emblem-glow"></div>
+    <svg class="emblem-svg" viewBox="0 0 200 200" role="img" aria-label="Le sceau de Nostrann">
+      <defs>
+        <linearGradient id="gGold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#f0d99a"/>
+          <stop offset="1" stop-color="#a9843f"/>
+        </linearGradient>
+        <linearGradient id="gViolet" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#b8a3ff"/>
+          <stop offset="1" stop-color="#5a3cb8"/>
+        </linearGradient>
+      </defs>
+      <g class="ring-outer">
+        <circle cx="100" cy="100" r="92" fill="none" stroke="url(#gViolet)" stroke-width="1" opacity=".55"/>
+        <g fill="url(#gGold)" opacity=".85">
+          <circle cx="100" cy="8" r="2.4"/><circle cx="100" cy="192" r="2.4"/>
+          <circle cx="8" cy="100" r="2.4"/><circle cx="192" cy="100" r="2.4"/>
+          <circle cx="34.7" cy="34.7" r="1.7"/><circle cx="165.3" cy="34.7" r="1.7"/>
+          <circle cx="34.7" cy="165.3" r="1.7"/><circle cx="165.3" cy="165.3" r="1.7"/>
+        </g>
+      </g>
+      <g class="ring-inner">
+        <circle cx="100" cy="100" r="70" fill="none" stroke="url(#gGold)" stroke-width="1" opacity=".5"/>
+        <path d="M100 30 L104 40 L100 50 L96 40 Z" fill="url(#gGold)" opacity=".8"/>
+        <path d="M100 170 L104 160 L100 150 L96 160 Z" fill="url(#gGold)" opacity=".8"/>
+        <path d="M30 100 L40 96 L50 100 L40 104 Z" fill="url(#gViolet)" opacity=".8"/>
+        <path d="M170 100 L160 96 L150 100 L160 104 Z" fill="url(#gViolet)" opacity=".8"/>
+      </g>
+      <g class="iris">
+        <path d="M42 100 C 65 72, 135 72, 158 100 C 135 128, 65 128, 42 100 Z"
+              fill="none" stroke="url(#gGold)" stroke-width="1.4"/>
+        <circle class="pupil" cx="100" cy="100" r="5.5" fill="url(#gViolet)"/>
+        <circle cx="100" cy="100" r="15" fill="none" stroke="url(#gGold)" stroke-width="1" opacity=".7"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="stage-card">
+    <p class="eyebrow" id="eyebrow">Adressez-vous à l'oracle</p>
+
+    <form id="askForm">
+      <div class="field">
+        <label id="themeLabel">Sur quoi porte votre question ?</label>
+        <div class="theme-grid" id="themeGrid" role="radiogroup" aria-labelledby="themeLabel">
+          <button type="button" class="theme-chip" data-theme="love" role="radio" aria-checked="false"><span class="tg">♥</span>Amour</button>
+          <button type="button" class="theme-chip" data-theme="money" role="radio" aria-checked="false"><span class="tg">◈</span>Argent</button>
+          <button type="button" class="theme-chip" data-theme="work" role="radio" aria-checked="false"><span class="tg">⚒</span>Emploi</button>
+          <button type="button" class="theme-chip" data-theme="chomage" role="radio" aria-checked="false"><span class="tg">⟳</span>Chômage</button>
+          <button type="button" class="theme-chip" data-theme="move" role="radio" aria-checked="false"><span class="tg">⌂</span>Déménagement</button>
+          <button type="button" class="theme-chip" data-theme="family" role="radio" aria-checked="false"><span class="tg">☽</span>Famille</button>
+          <button type="button" class="theme-chip" data-theme="friendship" role="radio" aria-checked="false"><span class="tg">☿</span>Amitié</button>
+          <button type="button" class="theme-chip" data-theme="health" role="radio" aria-checked="false"><span class="tg">☉</span>Santé &amp; énergie</button>
+          <button type="button" class="theme-chip" data-theme="projects" role="radio" aria-checked="false"><span class="tg">♃</span>Projets &amp; voyages</button>
+          <button type="button" class="theme-chip" data-theme="general" role="radio" aria-checked="false"><span class="tg">✦</span>Vie en général</button>
+        </div>
+      </div>
+      <div class="field" id="questionField" hidden>
+        <label id="questionLabel">Votre question précise</label>
+        <div class="theme-grid question-grid" id="questionGrid" role="radiogroup" aria-labelledby="questionLabel"></div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="fname">Prénom</label>
+          <input id="fname" type="text" maxlength="30" placeholder="Votre prénom" required>
+        </div>
+        <div class="field">
+          <label for="bdate">Date de naissance</label>
+          <input id="bdate" type="date" required>
+        </div>
+      </div>
+      <button type="submit" class="consult-btn" id="consultBtn" disabled>Consulter Nostrann</button>
+      <p class="lock-message" id="lockMessage" hidden></p>
+    </form>
+
+    <div class="ritual" id="ritual">
+      <div class="ritual-text" id="ritualText">Nostrann ouvre les voiles…</div>
+      <div class="ritual-dots"><span></span><span></span><span></span></div>
+    </div>
+
+    <div class="reveal" id="reveal">
+      <div class="verdict-banner" id="verdictBanner">
+        <span class="verdict-icon" id="verdictIcon">✓</span>
+        <div class="verdict-copy">
+          <p class="verdict-word" id="verdictWord">OUI</p>
+          <p class="verdict-sub" id="verdictSubEl"></p>
+          <p class="verdict-reason" id="verdictReasonEl"></p>
+        </div>
+      </div>
+      <div class="spread">
+        <div class="spread-card">
+          <p class="spread-label">Ce qui est</p>
+          <div class="card-flip" id="cardFlip0">
+            <div class="card-flip-inner">
+              <div class="card-face card-back">✦</div>
+              <div class="card-face card-front">
+                <div class="glyph" id="cardGlyph0">✦</div>
+                <div class="cname" id="cardName0">—</div>
+                <div class="corient" id="cardOrient0">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="spread-card">
+          <p class="spread-label">Ce qui se joue</p>
+          <div class="card-flip" id="cardFlip1">
+            <div class="card-flip-inner">
+              <div class="card-face card-back">✦</div>
+              <div class="card-face card-front">
+                <div class="glyph" id="cardGlyph1">✦</div>
+                <div class="cname" id="cardName1">—</div>
+                <div class="corient" id="cardOrient1">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="spread-card">
+          <p class="spread-label">Vers quoi cela mène</p>
+          <div class="card-flip" id="cardFlip2">
+            <div class="card-flip-inner">
+              <div class="card-face card-back">✦</div>
+              <div class="card-face card-front">
+                <div class="glyph" id="cardGlyph2">✦</div>
+                <div class="cname" id="cardName2">—</div>
+                <div class="corient" id="cardOrient2">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="bilan-question" id="bilanQuestion"></p>
+      <p class="bilan-intro" id="bilanIntro"></p>
+      <p class="bilan-present" id="bilanPresent"></p>
+      <p class="bilan-path" id="bilanPath"><span class="bilan-path-lead" id="bilanPathLead"></span> <span id="bilanPathText"></span></p>
+      <p class="bilan-advice" id="bilanAdvice"></p>
+      <p class="bilan-closer" id="bilanCloser"></p>
+      <p class="astro-note" id="astroNote"></p>
+      <div class="lucky-row" id="luckyRow">
+        <p class="lucky-title">Nombres des astres et des anciens</p>
+        <div class="lucky-balls" id="luckyBalls"></div>
+        <p class="lucky-disclaimer">Clin d'œil numérologique et symbolique — le tirage du loto reste entièrement aléatoire, aucune combinaison ne peut en changer les chances.</p>
+      </div>
+      <button type="button" class="ghost-btn world-toggle" id="worldToggle" hidden>🔮 Horoscope complet</button>
+      <div class="world-panel" id="worldPanel">
+        <div class="world-block">
+          <p class="world-block-title">Jour</p>
+          <p id="worldDay"></p>
+        </div>
+        <div class="world-block">
+          <p class="world-block-title">Semaine</p>
+          <p id="worldWeek"></p>
+        </div>
+        <div class="world-block">
+          <p class="world-block-title">Mois</p>
+          <p id="worldMonth"></p>
+        </div>
+        <div class="world-block">
+          <p class="world-block-title">Année</p>
+          <p id="worldYear"></p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="ghost-btn" id="againBtn">Poser une nouvelle question</button>
+        <button class="ghost-btn quit-btn" id="quitBtn">Quitter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Nostrann est une expérience de divertissement inspirée du tarot et de l'astrologie — un miroir pour votre réflexion, pas une vérité à suivre à la lettre.<br>Une création divinatoire de Yann Frette — gratuite, à l'usage comme à la diffusion.<br><a class="contact-link" href="mailto:immopilot.log@gmail.com">Contact : immopilot.log@gmail.com</a></footer>
+
+<script>
+/* ===================== Données : 78 cartes (même moteur que VoyantPilote) ===================== */
+const CARDS = [{"id":"MAT","name":"Le Mat","arcana":"majeur","rank":"Le Mat","element":"Air","polarity":0,"keywords":["liberté","nouveau départ"],"short":"Un départ qui demande une direction.","advice":"Avancez, mais choisissez d'abord une direction précise.","upright":{"situation":"un départ qui demande une direction","challenge":"la dispersion ou la fuite devant les contraintes","evolution":"une route nouvelle si vous gardez un cap"},"reversed":{"situation":"un départ qui demande une direction, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la dispersion ou la fuite devant les contraintes","evolution":"une route nouvelle si vous gardez un cap, après un délai, une correction ou une clarification"}},{"id":"BATELEUR","name":"Le Bateleur","arcana":"majeur","rank":"Le Bateleur","element":"Air","polarity":1,"keywords":["initiative","potentiel"],"short":"Un commencement concret et des moyens déjà disponibles.","advice":"Commencez par une action simple et vérifiable.","upright":{"situation":"un commencement concret et des moyens déjà disponibles","challenge":"le doute du début ou une énergie mal organisée","evolution":"une occasion à saisir par un premier geste"},"reversed":{"situation":"un commencement concret et des moyens déjà disponibles, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"le doute du début ou une énergie mal organisée","evolution":"une occasion à saisir par un premier geste, après un délai, une correction ou une clarification"}},{"id":"PAPESSE","name":"La Papesse","arcana":"majeur","rank":"La Papesse","element":"Eau","polarity":0,"keywords":["intuition","maturation"],"short":"Une compréhension qui mûrit dans le silence.","advice":"Écoutez, vérifiez et laissez l'information venir avant de conclure.","upright":{"situation":"une compréhension qui mûrit dans le silence","challenge":"une information retenue ou une attente trop longue","evolution":"une réponse qui se précise après observation"},"reversed":{"situation":"une compréhension qui mûrit dans le silence, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"une information retenue ou une attente trop longue","evolution":"une réponse qui se précise après observation, après un délai, une correction ou une clarification"}},{"id":"IMPERATRICE","name":"L'Impératrice","arcana":"majeur","rank":"L'Impératrice","element":"Air","polarity":1,"keywords":["expression","intelligence créative"],"short":"Une idée qui cherche à prendre forme par la parole.","advice":"Dites clairement ce que vous souhaitez et donnez une forme concrète à votre idée.","upright":{"situation":"une idée qui cherche à prendre forme par la parole","challenge":"la suranalyse ou un échange trop dispersé","evolution":"une avancée grâce à un dialogue clair"},"reversed":{"situation":"une idée qui cherche à prendre forme par la parole, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la suranalyse ou un échange trop dispersé","evolution":"une avancée grâce à un dialogue clair, après un délai, une correction ou une clarification"}},{"id":"EMPEREUR","name":"L'Empereur","arcana":"majeur","rank":"L'Empereur","element":"Terre","polarity":1,"keywords":["stabilité","construction"],"short":"Un besoin de cadre, de sécurité et de maîtrise.","advice":"Posez des limites claires et sécurisez les bases.","upright":{"situation":"un besoin de cadre, de sécurité et de maîtrise","challenge":"la rigidité ou le besoin de tout contrôler","evolution":"une consolidation si les bases sont sérieuses"},"reversed":{"situation":"un besoin de cadre, de sécurité et de maîtrise, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la rigidité ou le besoin de tout contrôler","evolution":"une consolidation si les bases sont sérieuses, après un délai, une correction ou une clarification"}},{"id":"PAPE","name":"Le Pape","arcana":"majeur","rank":"Le Pape","element":"Eau","polarity":1,"keywords":["conseil","transmission"],"short":"Un besoin de dialogue mature et de repères fiables.","advice":"Appuyez-vous sur une personne compétente sans lui abandonner votre décision.","upright":{"situation":"un besoin de dialogue mature et de repères fiables","challenge":"la dépendance à l'avis d'autrui ou un accord qui tarde","evolution":"une issue facilitée par un conseil ou une médiation"},"reversed":{"situation":"un besoin de dialogue mature et de repères fiables, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la dépendance à l'avis d'autrui ou un accord qui tarde","evolution":"une issue facilitée par un conseil ou une médiation, après un délai, une correction ou une clarification"}},{"id":"AMOUREUX","name":"L'Amoureux","arcana":"majeur","rank":"L'Amoureux","element":"Air","polarity":0,"keywords":["choix","engagement affectif"],"short":"Une décision qui touche autant le cœur que la raison.","advice":"Choisissez ce qui respecte vos valeurs plutôt que ce qui apaise seulement l'urgence.","upright":{"situation":"une décision qui touche autant le cœur que la raison","challenge":"l'indécision, la peur de déplaire ou des attentes contradictoires","evolution":"une clarification lorsque le choix devient assumé"},"reversed":{"situation":"une décision qui touche autant le cœur que la raison, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"l'indécision, la peur de déplaire ou des attentes contradictoires","evolution":"une clarification lorsque le choix devient assumé, après un délai, une correction ou une clarification"}},{"id":"CHARIOT","name":"Le Chariot","arcana":"majeur","rank":"Le Chariot","element":"Feu","polarity":1,"keywords":["progression","volonté"],"short":"Une envie forte d'avancer et de reprendre les commandes.","advice":"Avancez avec détermination, mais sans négliger la préparation.","upright":{"situation":"une envie forte d'avancer et de reprendre les commandes","challenge":"la précipitation ou une compétition inutile","evolution":"une progression nette si l'énergie reste dirigée"},"reversed":{"situation":"une envie forte d'avancer et de reprendre les commandes, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la précipitation ou une compétition inutile","evolution":"une progression nette si l'énergie reste dirigée, après un délai, une correction ou une clarification"}},{"id":"JUSTICE","name":"La Justice","arcana":"majeur","rank":"La Justice","element":"Air","polarity":0,"keywords":["équilibre","décision"],"short":"Un besoin de vérité, d'équité et de faits précis.","advice":"Vérifiez les faits, les documents et les engagements avant de trancher.","upright":{"situation":"un besoin de vérité, d'équité et de faits précis","challenge":"un jugement trop sévère ou une situation administrative mal réglée","evolution":"une décision plus claire grâce à des éléments vérifiables"},"reversed":{"situation":"un besoin de vérité, d'équité et de faits précis, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"un jugement trop sévère ou une situation administrative mal réglée","evolution":"une décision plus claire grâce à des éléments vérifiables, après un délai, une correction ou une clarification"}},{"id":"HERMITE","name":"L'Hermite","arcana":"majeur","rank":"L'Hermite","element":"Terre","polarity":0,"keywords":["recul","sagesse"],"short":"Une période de réflexion qui demande de ralentir.","advice":"Prenez du recul sans transformer la prudence en immobilité.","upright":{"situation":"une période de réflexion qui demande de ralentir","challenge":"l'isolement, la fatigue ou la peur de se tromper","evolution":"une avancée lente mais plus sûre après compréhension"},"reversed":{"situation":"une période de réflexion qui demande de ralentir, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"l'isolement, la fatigue ou la peur de se tromper","evolution":"une avancée lente mais plus sûre après compréhension, après un délai, une correction ou une clarification"}},{"id":"ROUE","name":"La Roue de Fortune","arcana":"majeur","rank":"La Roue de Fortune","element":"Feu","polarity":1,"keywords":["changement de cycle"],"short":"Un tournant et une occasion de modifier le rythme.","advice":"Préparez plusieurs options et restez disponible au changement.","upright":{"situation":"un tournant et une occasion de modifier le rythme","challenge":"l'instabilité ou la répétition d'un ancien scénario","evolution":"un retournement favorable si vous saisissez le bon moment"},"reversed":{"situation":"un tournant et une occasion de modifier le rythme, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"l'instabilité ou la répétition d'un ancien scénario","evolution":"un retournement favorable si vous saisissez le bon moment, après un délai, une correction ou une clarification"}},{"id":"FORCE","name":"La Force","arcana":"majeur","rank":"La Force","element":"Feu","polarity":1,"keywords":["courage","maîtrise intérieure"],"short":"Une capacité à tenir votre position avec calme.","advice":"Canalisez l'émotion et affirmez-vous sans entrer dans un rapport de force.","upright":{"situation":"une capacité à tenir votre position avec calme","challenge":"la tension contenue, l'orgueil ou l'épuisement","evolution":"une progression par la patience et la fermeté"},"reversed":{"situation":"une capacité à tenir votre position avec calme, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la tension contenue, l'orgueil ou l'épuisement","evolution":"une progression par la patience et la fermeté, après un délai, une correction ou une clarification"}},{"id":"PENDU","name":"Le Pendu","arcana":"majeur","rank":"Le Pendu","element":"Eau","polarity":-1,"keywords":["attente","changement de regard"],"short":"Une situation suspendue qui oblige à voir autrement.","advice":"Cessez de forcer la même solution et changez d'angle.","upright":{"situation":"une situation suspendue qui oblige à voir autrement","challenge":"l'attente sans limite ou le sacrifice excessif","evolution":"une évolution après lâcher-prise ou changement de méthode"},"reversed":{"situation":"une situation suspendue qui oblige à voir autrement, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"l'attente sans limite ou le sacrifice excessif","evolution":"une évolution après lâcher-prise ou changement de méthode, après un délai, une correction ou une clarification"}},{"id":"ARCANE_XIII","name":"L'Arcane sans nom","arcana":"majeur","rank":"L'Arcane sans nom","element":"Terre","polarity":-1,"keywords":["transformation","fin de cycle"],"short":"Un besoin de tourner une page et de faire de la place.","advice":"Terminez proprement ce qui n'a plus sa place.","upright":{"situation":"un besoin de tourner une page et de faire de la place","challenge":"la résistance au changement ou la peur de perdre","evolution":"un renouveau après une coupure ou un tri nécessaire"},"reversed":{"situation":"un besoin de tourner une page et de faire de la place, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la résistance au changement ou la peur de perdre","evolution":"un renouveau après une coupure ou un tri nécessaire, après un délai, une correction ou une clarification"}},{"id":"TEMPERANCE","name":"Tempérance","arcana":"majeur","rank":"Tempérance","element":"Eau","polarity":1,"keywords":["harmonie","ajustement"],"short":"Une amélioration progressive par le dialogue.","advice":"Reprenez le dialogue sans pression et cherchez le bon dosage.","upright":{"situation":"une amélioration progressive par le dialogue","challenge":"la passivité ou un compromis trop flou","evolution":"un apaisement durable si chacun ajuste sa position"},"reversed":{"situation":"une amélioration progressive par le dialogue, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la passivité ou un compromis trop flou","evolution":"un apaisement durable si chacun ajuste sa position, après un délai, une correction ou une clarification"}},{"id":"DIABLE","name":"Le Diable","arcana":"majeur","rank":"Le Diable","element":"Feu","polarity":-1,"keywords":["désir","attachement"],"short":"Une attraction, une ambition ou un enjeu très intense.","advice":"Nommez ce qui vous attire et posez une limite à ce qui vous enferme.","upright":{"situation":"une attraction, une ambition ou un enjeu très intense","challenge":"la dépendance, la jalousie ou un rapport de force","evolution":"une libération si les intérêts cachés sont nommés"},"reversed":{"situation":"une attraction, une ambition ou un enjeu très intense, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la dépendance, la jalousie ou un rapport de force","evolution":"une libération si les intérêts cachés sont nommés, après un délai, une correction ou une clarification"}},{"id":"MAISON_DIEU","name":"La Maison Dieu","arcana":"majeur","rank":"La Maison Dieu","element":"Feu","polarity":-1,"keywords":["révélation","libération"],"short":"Une vérité ou un changement qui bouscule les habitudes.","advice":"Accueillez l'information avant de décider sous le coup de l'émotion.","upright":{"situation":"une vérité ou un changement qui bouscule les habitudes","challenge":"la réaction sous le choc ou la peur de perdre vos repères","evolution":"une reconstruction plus honnête après une clarification"},"reversed":{"situation":"une vérité ou un changement qui bouscule les habitudes, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la réaction sous le choc ou la peur de perdre vos repères","evolution":"une reconstruction plus honnête après une clarification, après un délai, une correction ou une clarification"}},{"id":"ETOILE","name":"L'Étoile","arcana":"majeur","rank":"L'Étoile","element":"Eau","polarity":1,"keywords":["espoir","authenticité"],"short":"Une confiance qui revient avec douceur.","advice":"Restez fidèle à vous-même et transformez l'espoir en démarche concrète.","upright":{"situation":"une confiance qui revient avec douceur","challenge":"l'idéalisation ou l'attente trop passive","evolution":"une ouverture favorable si l'espoir devient action"},"reversed":{"situation":"une confiance qui revient avec douceur, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"l'idéalisation ou l'attente trop passive","evolution":"une ouverture favorable si l'espoir devient action, après un délai, une correction ou une clarification"}},{"id":"LUNE","name":"La Lune","arcana":"majeur","rank":"La Lune","element":"Eau","polarity":-1,"keywords":["sensibilité","non-dits"],"short":"Un climat émotionnel riche mais encore ambigu.","advice":"Distinguez l'intuition de l'inquiétude et demandez une clarification.","upright":{"situation":"un climat émotionnel riche mais encore ambigu","challenge":"la peur projetée, la confusion ou les malentendus","evolution":"une clarification lorsque les émotions retombent"},"reversed":{"situation":"un climat émotionnel riche mais encore ambigu, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la peur projetée, la confusion ou les malentendus","evolution":"une clarification lorsque les émotions retombent, après un délai, une correction ou une clarification"}},{"id":"SOLEIL","name":"Le Soleil","arcana":"majeur","rank":"Le Soleil","element":"Feu","polarity":1,"keywords":["clarté","réussite partagée"],"short":"Une possibilité de compréhension, de joie et d'accord.","advice":"Allez vers ce qui devient simple, réciproque et clairement exprimé.","upright":{"situation":"une possibilité de compréhension, de joie et d'accord","challenge":"le besoin de reconnaissance ou une vérité encore partielle","evolution":"une évolution chaleureuse et visible dans les actes"},"reversed":{"situation":"une possibilité de compréhension, de joie et d'accord, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"le besoin de reconnaissance ou une vérité encore partielle","evolution":"une évolution chaleureuse et visible dans les actes, après un délai, une correction ou une clarification"}},{"id":"JUGEMENT","name":"Le Jugement","arcana":"majeur","rank":"Le Jugement","element":"Air","polarity":1,"keywords":["nouvelle","réveil"],"short":"Une prise de conscience ou une nouvelle qui relance la situation.","advice":"Répondez à ce qui devient clair et tirez une leçon du passé.","upright":{"situation":"une prise de conscience ou une nouvelle qui relance la situation","challenge":"la peur du regard d'autrui ou l'attente d'une validation","evolution":"un nouveau départ après une réponse ou un appel"},"reversed":{"situation":"une prise de conscience ou une nouvelle qui relance la situation, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la peur du regard d'autrui ou l'attente d'une validation","evolution":"un nouveau départ après une réponse ou un appel, après un délai, une correction ou une clarification"}},{"id":"MONDE","name":"Le Monde","arcana":"majeur","rank":"Le Monde","element":"Terre","polarity":1,"keywords":["accomplissement","ouverture"],"short":"Une étape proche de son aboutissement.","advice":"Finalisez l'étape actuelle avant d'ouvrir le cycle suivant.","upright":{"situation":"une étape proche de son aboutissement","challenge":"la peur de conclure ou un détail qui empêche la finalisation","evolution":"une réussite, une ouverture ou une reconnaissance plus large"},"reversed":{"situation":"une étape proche de son aboutissement, mais ce mouvement reste contrarié ou difficile à exprimer","challenge":"la peur de conclure ou un détail qui empêche la finalisation","evolution":"une réussite, une ouverture ou une reconnaissance plus large, après un délai, une correction ou une clarification"}},{"id":"AS_BATONS","name":"As de Bâtons","arcana":"mineur","rank":"As","element":"Feu","polarity":1,"keywords":["bâtons","as","feu"],"short":"Un élan neuf, une idée ou une envie d'agir.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"un élan neuf, une idée ou une envie d'agir","challenge":"la peur de commencer ou le manque de direction","evolution":"une initiative qui ouvre une voie"},"reversed":{"situation":"un départ retardé, une motivation irrégulière ou une occasion mal canalisée","challenge":"la peur de commencer ou le manque de direction","evolution":"une initiative qui ouvre une voie, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DEUX_BATONS","name":"Deux de Bâtons","arcana":"mineur","rank":"Deux","element":"Feu","polarity":0,"keywords":["bâtons","deux","feu"],"short":"Un projet qui demande de choisir sa direction.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"un projet qui demande de choisir sa direction","challenge":"un choix reporté ou un plan encore trop théorique","evolution":"une décision stratégique et une vision plus large"},"reversed":{"situation":"une hésitation entre sécurité et expansion","challenge":"un choix reporté ou un plan encore trop théorique","evolution":"une décision stratégique et une vision plus large, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"TROIS_BATONS","name":"Trois de Bâtons","arcana":"mineur","rank":"Trois","element":"Feu","polarity":1,"keywords":["bâtons","trois","feu"],"short":"Une progression grâce à l'anticipation et aux premiers résultats.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une progression grâce à l'anticipation et aux premiers résultats","challenge":"un manque de visibilité sur la suite","evolution":"un projet qui s'élargit après un premier succès"},"reversed":{"situation":"une attente décevante ou une coopération mal coordonnée","challenge":"un manque de visibilité sur la suite","evolution":"un projet qui s'élargit après un premier succès, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"QUATRE_BATONS","name":"Quatre de Bâtons","arcana":"mineur","rank":"Quatre","element":"Feu","polarity":1,"keywords":["bâtons","quatre","feu"],"short":"Une étape stable, une célébration ou un cadre rassurant.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une étape stable, une célébration ou un cadre rassurant","challenge":"un foyer ou une organisation qui demande un nouvel équilibre","evolution":"un moment de consolidation et de partage"},"reversed":{"situation":"une stabilité fragile ou un accord qui manque encore de solidité","challenge":"un foyer ou une organisation qui demande un nouvel équilibre","evolution":"un moment de consolidation et de partage, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CINQ_BATONS","name":"Cinq de Bâtons","arcana":"mineur","rank":"Cinq","element":"Feu","polarity":-1,"keywords":["bâtons","cinq","feu"],"short":"Une concurrence, des tensions ou des volontés qui s'opposent.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une concurrence, des tensions ou des volontés qui s'opposent","challenge":"une lutte inutile qui fatigue sans faire avancer","evolution":"un défi qui peut stimuler votre détermination"},"reversed":{"situation":"un conflit évité mais non réglé, ou une énergie dispersée","challenge":"une lutte inutile qui fatigue sans faire avancer","evolution":"un défi qui peut stimuler votre détermination, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SIX_BATONS","name":"Six de Bâtons","arcana":"mineur","rank":"Six","element":"Feu","polarity":1,"keywords":["bâtons","six","feu"],"short":"Une reconnaissance, un passage réussi ou un soutien visible.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une reconnaissance, un passage réussi ou un soutien visible","challenge":"le besoin de prouver trop fortement votre valeur","evolution":"une avancée confirmée par le regard des autres"},"reversed":{"situation":"une reconnaissance tardive ou une victoire qui ne rassure pas complètement","challenge":"le besoin de prouver trop fortement votre valeur","evolution":"une avancée confirmée par le regard des autres, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SEPT_BATONS","name":"Sept de Bâtons","arcana":"mineur","rank":"Sept","element":"Feu","polarity":0,"keywords":["bâtons","sept","feu"],"short":"La défense d'une position et le courage de tenir votre choix.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"la défense d'une position et le courage de tenir votre choix","challenge":"une résistance excessive ou la peur de perdre votre place","evolution":"la capacité à protéger ce qui compte"},"reversed":{"situation":"la fatigue de devoir vous justifier ou une limite difficile à maintenir","challenge":"une résistance excessive ou la peur de perdre votre place","evolution":"la capacité à protéger ce qui compte, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"HUIT_BATONS","name":"Huit de Bâtons","arcana":"mineur","rank":"Huit","element":"Feu","polarity":0,"keywords":["bâtons","huit","feu"],"short":"Une accélération, des messages ou des événements qui s'enchaînent.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une accélération, des messages ou des événements qui s'enchaînent","challenge":"un rythme désordonné qui demande de ralentir","evolution":"une évolution rapide et plusieurs informations utiles"},"reversed":{"situation":"des retards, des messages contradictoires ou une précipitation","challenge":"un rythme désordonné qui demande de ralentir","evolution":"une évolution rapide et plusieurs informations utiles, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"NEUF_BATONS","name":"Neuf de Bâtons","arcana":"mineur","rank":"Neuf","element":"Feu","polarity":1,"keywords":["bâtons","neuf","feu"],"short":"La persévérance après des épreuves et la protection de vos acquis.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"la persévérance après des épreuves et la protection de vos acquis","challenge":"une défense permanente qui empêche de recevoir de l'aide","evolution":"la force de continuer avec davantage d'expérience"},"reversed":{"situation":"la méfiance, l'épuisement ou la peur d'une nouvelle difficulté","challenge":"une défense permanente qui empêche de recevoir de l'aide","evolution":"la force de continuer avec davantage d'expérience, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DIX_BATONS","name":"Dix de Bâtons","arcana":"mineur","rank":"Dix","element":"Feu","polarity":1,"keywords":["bâtons","dix","feu"],"short":"Une lourde responsabilité et la fin prochaine d'un effort.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une lourde responsabilité et la fin prochaine d'un effort","challenge":"un poids devenu excessif ou des obligations mal réparties","evolution":"l'aboutissement d'une période exigeante"},"reversed":{"situation":"une surcharge qu'il devient nécessaire de partager ou d'abandonner","challenge":"un poids devenu excessif ou des obligations mal réparties","evolution":"l'aboutissement d'une période exigeante, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"VALET_BATONS","name":"Valet de Bâtons","arcana":"mineur","rank":"Valet","element":"Feu","polarity":0,"keywords":["bâtons","valet","feu"],"short":"Une nouvelle idée, un message motivant ou une personne curieuse.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une nouvelle idée, un message motivant ou une personne curieuse","challenge":"une personne inconstante ou un message qui manque de précision","evolution":"une information qui donne envie d'essayer"},"reversed":{"situation":"un projet immature, une promesse enthousiaste mais peu suivie","challenge":"une personne inconstante ou un message qui manque de précision","evolution":"une information qui donne envie d'essayer, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CAVALIER_BATONS","name":"Cavalier de Bâtons","arcana":"mineur","rank":"Cavalier","element":"Feu","polarity":0,"keywords":["bâtons","cavalier","feu"],"short":"Une personne entreprenante et un mouvement rapide.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une personne entreprenante et un mouvement rapide","challenge":"un emballement ou un changement de direction brusque","evolution":"une action audacieuse qui accélère la situation"},"reversed":{"situation":"une personne impulsive, instable ou qui promet plus qu'elle ne tient","challenge":"un emballement ou un changement de direction brusque","evolution":"une action audacieuse qui accélère la situation, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"REINE_BATONS","name":"Reine de Bâtons","arcana":"mineur","rank":"Reine","element":"Feu","polarity":1,"keywords":["bâtons","reine","feu"],"short":"Une personne chaleureuse, créative et sûre de sa valeur.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une personne chaleureuse, créative et sûre de sa valeur","challenge":"un besoin de reconnaissance qui complique la coopération","evolution":"une influence encourageante qui aide à croire au projet"},"reversed":{"situation":"une personne susceptible, exigeante ou épuisée de trop porter","challenge":"un besoin de reconnaissance qui complique la coopération","evolution":"une influence encourageante qui aide à croire au projet, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"ROI_BATONS","name":"Roi de Bâtons","arcana":"mineur","rank":"Roi","element":"Feu","polarity":1,"keywords":["bâtons","roi","feu"],"short":"Une personne expérimentée, ambitieuse et capable de diriger.","advice":"Canalisez votre énergie dans une action précise.","upright":{"situation":"une personne expérimentée, ambitieuse et capable de diriger","challenge":"un rapport de pouvoir ou une volonté qui ne laisse pas assez de place aux autres","evolution":"une direction claire et une décision assumée"},"reversed":{"situation":"une autorité dure, impatiente ou trop centrée sur le contrôle","challenge":"un rapport de pouvoir ou une volonté qui ne laisse pas assez de place aux autres","evolution":"une direction claire et une décision assumée, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"AS_COUPES","name":"As de Coupes","arcana":"mineur","rank":"As","element":"Eau","polarity":1,"keywords":["coupes","as","eau"],"short":"Une ouverture du cœur, un sentiment neuf ou un apaisement profond.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"une ouverture du cœur, un sentiment neuf ou un apaisement profond","challenge":"un besoin d'amour qui ne trouve pas encore sa juste expression","evolution":"un nouveau départ affectif ou une réconciliation intérieure"},"reversed":{"situation":"une émotion retenue, une déception ou une difficulté à recevoir","challenge":"un besoin d'amour qui ne trouve pas encore sa juste expression","evolution":"un nouveau départ affectif ou une réconciliation intérieure, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DEUX_COUPES","name":"Deux de Coupes","arcana":"mineur","rank":"Deux","element":"Eau","polarity":0,"keywords":["coupes","deux","eau"],"short":"Une rencontre, un accord sincère ou une réciprocité.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"une rencontre, un accord sincère ou une réciprocité","challenge":"une relation où l'un donne davantage que l'autre","evolution":"un rapprochement construit sur un échange vrai"},"reversed":{"situation":"un déséquilibre, un malentendu ou une confiance fragilisée","challenge":"une relation où l'un donne davantage que l'autre","evolution":"un rapprochement construit sur un échange vrai, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"TROIS_COUPES","name":"Trois de Coupes","arcana":"mineur","rank":"Trois","element":"Eau","polarity":1,"keywords":["coupes","trois","eau"],"short":"Un soutien amical, une joie partagée ou une bonne nouvelle.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"un soutien amical, une joie partagée ou une bonne nouvelle","challenge":"une relation triangulaire ou des avis extérieurs trop présents","evolution":"une célébration et une aide venue du groupe"},"reversed":{"situation":"un entourage envahissant, un excès ou une influence extérieure confuse","challenge":"une relation triangulaire ou des avis extérieurs trop présents","evolution":"une célébration et une aide venue du groupe, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"QUATRE_COUPES","name":"Quatre de Coupes","arcana":"mineur","rank":"Quatre","element":"Eau","polarity":1,"keywords":["coupes","quatre","eau"],"short":"Une lassitude émotionnelle et une occasion que vous regardez avec prudence.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"une lassitude émotionnelle et une occasion que vous regardez avec prudence","challenge":"une ouverture qui revient après un temps de retrait","evolution":"un besoin de reconnaître ce qui ne vous nourrit plus"},"reversed":{"situation":"une reprise d'intérêt ou la sortie d'une période de fermeture","challenge":"une ouverture qui revient après un temps de retrait","evolution":"un besoin de reconnaître ce qui ne vous nourrit plus, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CINQ_COUPES","name":"Cinq de Coupes","arcana":"mineur","rank":"Cinq","element":"Eau","polarity":-1,"keywords":["coupes","cinq","eau"],"short":"Un regret, une déception ou l'attention fixée sur ce qui a été perdu.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"un regret, une déception ou l'attention fixée sur ce qui a été perdu","challenge":"un passé qui perd enfin de son poids","evolution":"une étape de deuil émotionnel nécessaire"},"reversed":{"situation":"une guérison progressive et la capacité à voir ce qui reste possible","challenge":"un passé qui perd enfin de son poids","evolution":"une étape de deuil émotionnel nécessaire, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SIX_COUPES","name":"Six de Coupes","arcana":"mineur","rank":"Six","element":"Eau","polarity":1,"keywords":["coupes","six","eau"],"short":"Un souvenir, un retour ou une relation liée au passé.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"un souvenir, un retour ou une relation liée au passé","challenge":"un ancien schéma qui doit être regardé avec plus de maturité","evolution":"un rapprochement tendre ou une ancienne histoire qui revient"},"reversed":{"situation":"une idéalisation du passé ou une difficulté à grandir dans le lien","challenge":"un ancien schéma qui doit être regardé avec plus de maturité","evolution":"un rapprochement tendre ou une ancienne histoire qui revient, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SEPT_COUPES","name":"Sept de Coupes","arcana":"mineur","rank":"Sept","element":"Eau","polarity":0,"keywords":["coupes","sept","eau"],"short":"Plusieurs désirs, rêves ou possibilités difficiles à départager.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"plusieurs désirs, rêves ou possibilités difficiles à départager","challenge":"des promesses séduisantes mais encore peu concrètes","evolution":"une imagination riche qui demande du discernement"},"reversed":{"situation":"la fin d'une illusion et un choix qui devient plus réaliste","challenge":"des promesses séduisantes mais encore peu concrètes","evolution":"une imagination riche qui demande du discernement, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"HUIT_COUPES","name":"Huit de Coupes","arcana":"mineur","rank":"Huit","element":"Eau","polarity":0,"keywords":["coupes","huit","eau"],"short":"Le choix de s'éloigner de ce qui ne comble plus.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"le choix de s'éloigner de ce qui ne comble plus","challenge":"un attachement qui retarde une décision nécessaire","evolution":"une recherche de sens plus profond"},"reversed":{"situation":"la peur de partir ou un retour vers une situation pourtant insatisfaisante","challenge":"un attachement qui retarde une décision nécessaire","evolution":"une recherche de sens plus profond, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"NEUF_COUPES","name":"Neuf de Coupes","arcana":"mineur","rank":"Neuf","element":"Eau","polarity":1,"keywords":["coupes","neuf","eau"],"short":"Un souhait proche de se réaliser et une satisfaction personnelle.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"un souhait proche de se réaliser et une satisfaction personnelle","challenge":"une promesse de bonheur qui demande encore de la mesure","evolution":"un mieux-être et la reconnaissance d'un désir légitime"},"reversed":{"situation":"un plaisir incomplet, une attente excessive ou une autosatisfaction","challenge":"une promesse de bonheur qui demande encore de la mesure","evolution":"un mieux-être et la reconnaissance d'un désir légitime, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DIX_COUPES","name":"Dix de Coupes","arcana":"mineur","rank":"Dix","element":"Eau","polarity":1,"keywords":["coupes","dix","eau"],"short":"Un épanouissement affectif, familial ou collectif.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"un épanouissement affectif, familial ou collectif","challenge":"une famille ou un couple qui doit retrouver une vérité commune","evolution":"un lien capable de devenir plus complet"},"reversed":{"situation":"une harmonie apparente, des attentes familiales ou un bonheur fragilisé","challenge":"une famille ou un couple qui doit retrouver une vérité commune","evolution":"un lien capable de devenir plus complet, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"VALET_COUPES","name":"Valet de Coupes","arcana":"mineur","rank":"Valet","element":"Eau","polarity":0,"keywords":["coupes","valet","eau"],"short":"Un message affectif, une invitation ou une personne sensible.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"un message affectif, une invitation ou une personne sensible","challenge":"une personne qui ressent beaucoup mais s'exprime maladroitement","evolution":"une parole douce qui ouvre le dialogue"},"reversed":{"situation":"une émotion immature, un message ambigu ou une susceptibilité","challenge":"une personne qui ressent beaucoup mais s'exprime maladroitement","evolution":"une parole douce qui ouvre le dialogue, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CAVALIER_COUPES","name":"Cavalier de Coupes","arcana":"mineur","rank":"Cavalier","element":"Eau","polarity":0,"keywords":["coupes","cavalier","eau"],"short":"Une démarche romantique, une proposition ou une personne attentive.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"une démarche romantique, une proposition ou une personne attentive","challenge":"une personne qui avance par vagues et manque de constance","evolution":"un rapprochement porté par l'émotion"},"reversed":{"situation":"une séduction instable, une promesse floue ou une idéalisation","challenge":"une personne qui avance par vagues et manque de constance","evolution":"un rapprochement porté par l'émotion, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"REINE_COUPES","name":"Reine de Coupes","arcana":"mineur","rank":"Reine","element":"Eau","polarity":1,"keywords":["coupes","reine","eau"],"short":"Une personne intuitive, bienveillante et profondément réceptive.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"une personne intuitive, bienveillante et profondément réceptive","challenge":"une hypersensibilité qui rend les limites difficiles à poser","evolution":"une présence qui comprend sans juger"},"reversed":{"situation":"une personne absorbée par ses émotions ou qui se protège par le silence","challenge":"une hypersensibilité qui rend les limites difficiles à poser","evolution":"une présence qui comprend sans juger, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"ROI_COUPES","name":"Roi de Coupes","arcana":"mineur","rank":"Roi","element":"Eau","polarity":1,"keywords":["coupes","roi","eau"],"short":"Une personne affectivement mûre, calme et capable d'écouter.","advice":"Exprimez clairement ce que vous ressentez et observez la réciprocité.","upright":{"situation":"une personne affectivement mûre, calme et capable d'écouter","challenge":"un silence maîtrisé qui empêche de savoir ce qui est réellement ressenti","evolution":"un soutien émotionnel stable et mesuré"},"reversed":{"situation":"une personne qui contrôle ses émotions ou refuse de les montrer","challenge":"un silence maîtrisé qui empêche de savoir ce qui est réellement ressenti","evolution":"un soutien émotionnel stable et mesuré, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"AS_EPEES","name":"As d'Épées","arcana":"mineur","rank":"As","element":"Air","polarity":1,"keywords":["épées","as","air"],"short":"Une vérité, une décision ou une idée qui tranche le flou.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une vérité, une décision ou une idée qui tranche le flou","challenge":"un conflit intérieur ou une information difficile à interpréter","evolution":"une clarification qui permet de repartir sur des bases nettes"},"reversed":{"situation":"une confusion, une parole blessante ou une décision mal préparée","challenge":"un conflit intérieur ou une information difficile à interpréter","evolution":"une clarification qui permet de repartir sur des bases nettes, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DEUX_EPEES","name":"Deux d'Épées","arcana":"mineur","rank":"Deux","element":"Air","polarity":0,"keywords":["épées","deux","air"],"short":"Une hésitation, un équilibre fragile ou une décision temporairement suspendue.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une hésitation, un équilibre fragile ou une décision temporairement suspendue","challenge":"un refus de voir qui entretient le blocage","evolution":"une pause utile avant de trancher"},"reversed":{"situation":"un choix qui ne peut plus être évité ou une information qui force à regarder la réalité","challenge":"un refus de voir qui entretient le blocage","evolution":"une pause utile avant de trancher, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"TROIS_EPEES","name":"Trois d'Épées","arcana":"mineur","rank":"Trois","element":"Air","polarity":1,"keywords":["épées","trois","air"],"short":"Une blessure, une séparation ou une vérité douloureuse.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une blessure, une séparation ou une vérité douloureuse","challenge":"une blessure ancienne encore sensible mais en voie d'apaisement","evolution":"la nécessité de reconnaître ce qui a fait mal"},"reversed":{"situation":"une réparation progressive, un pardon possible ou une douleur qui s'atténue","challenge":"une blessure ancienne encore sensible mais en voie d'apaisement","evolution":"la nécessité de reconnaître ce qui a fait mal, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"QUATRE_EPEES","name":"Quatre d'Épées","arcana":"mineur","rank":"Quatre","element":"Air","polarity":1,"keywords":["épées","quatre","air"],"short":"Un repos nécessaire, une pause ou une mise à distance.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"un repos nécessaire, une pause ou une mise à distance","challenge":"une immobilité devenue pesante","evolution":"un temps de récupération avant la prochaine décision"},"reversed":{"situation":"une reprise trop rapide, une agitation ou une fatigue prolongée","challenge":"une immobilité devenue pesante","evolution":"un temps de récupération avant la prochaine décision, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CINQ_EPEES","name":"Cinq d'Épées","arcana":"mineur","rank":"Cinq","element":"Air","polarity":-1,"keywords":["épées","cinq","air"],"short":"Un conflit où chacun cherche à avoir raison.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"un conflit où chacun cherche à avoir raison","challenge":"un conflit stérile ou une parole qui laisse des traces","evolution":"une victoire qui mérite d'être évaluée"},"reversed":{"situation":"la fin d'une lutte, un regret ou la possibilité de sortir d'un rapport de force","challenge":"un conflit stérile ou une parole qui laisse des traces","evolution":"une victoire qui mérite d'être évaluée, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SIX_EPEES","name":"Six d'Épées","arcana":"mineur","rank":"Six","element":"Air","polarity":1,"keywords":["épées","six","air"],"short":"Un passage vers une période plus calme et une transition réfléchie.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"un passage vers une période plus calme et une transition réfléchie","challenge":"une transition incomplète qui demande encore du courage","evolution":"une amélioration progressive après une décision"},"reversed":{"situation":"un passé qui retient, un déplacement retardé ou une difficulté à tourner la page","challenge":"une transition incomplète qui demande encore du courage","evolution":"une amélioration progressive après une décision, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SEPT_EPEES","name":"Sept d'Épées","arcana":"mineur","rank":"Sept","element":"Air","polarity":0,"keywords":["épées","sept","air"],"short":"Une stratégie, une discrétion ou une information gardée de côté.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une stratégie, une discrétion ou une information gardée de côté","challenge":"une confiance fragilisée par des non-dits","evolution":"une approche prudente dans une situation complexe"},"reversed":{"situation":"une vérité révélée, une manœuvre découverte ou le besoin d'être plus transparent","challenge":"une confiance fragilisée par des non-dits","evolution":"une approche prudente dans une situation complexe, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"HUIT_EPEES","name":"Huit d'Épées","arcana":"mineur","rank":"Huit","element":"Air","polarity":0,"keywords":["épées","huit","air"],"short":"Le sentiment d'être enfermé par la peur ou par des pensées répétitives.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"le sentiment d'être enfermé par la peur ou par des pensées répétitives","challenge":"une peur qui perd de son pouvoir lorsque les faits sont regardés","evolution":"une limite surtout mentale qui peut être dépassée"},"reversed":{"situation":"une libération, une prise de recul ou la découverte d'une marge de choix","challenge":"une peur qui perd de son pouvoir lorsque les faits sont regardés","evolution":"une limite surtout mentale qui peut être dépassée, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"NEUF_EPEES","name":"Neuf d'Épées","arcana":"mineur","rank":"Neuf","element":"Air","polarity":1,"keywords":["épées","neuf","air"],"short":"Une inquiétude, des nuits agitées ou la crainte d'un scénario difficile.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une inquiétude, des nuits agitées ou la crainte d'un scénario difficile","challenge":"une culpabilité ou une anxiété qui commence à se relâcher","evolution":"une peur qui demande à être nommée plutôt que nourrie"},"reversed":{"situation":"un apaisement progressif ou le besoin de demander de l'aide","challenge":"une culpabilité ou une anxiété qui commence à se relâcher","evolution":"une peur qui demande à être nommée plutôt que nourrie, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DIX_EPEES","name":"Dix d'Épées","arcana":"mineur","rank":"Dix","element":"Air","polarity":1,"keywords":["épées","dix","air"],"short":"La fin douloureuse d'un cycle et l'impossibilité de continuer de la même manière.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"la fin douloureuse d'un cycle et l'impossibilité de continuer de la même manière","challenge":"une ancienne douleur qui demande une dernière clarification","evolution":"une clôture nette qui prépare le renouveau"},"reversed":{"situation":"une reprise après une période très difficile ou le refus d'admettre qu'une étape est terminée","challenge":"une ancienne douleur qui demande une dernière clarification","evolution":"une clôture nette qui prépare le renouveau, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"VALET_EPEES","name":"Valet d'Épées","arcana":"mineur","rank":"Valet","element":"Air","polarity":0,"keywords":["épées","valet","air"],"short":"Une information, une observation ou une personne vive et curieuse.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une information, une observation ou une personne vive et curieuse","challenge":"une personne qui observe beaucoup mais manque encore de maturité","evolution":"un message qui demande d'être vérifié"},"reversed":{"situation":"des paroles indiscrètes, une méfiance excessive ou une information mal comprise","challenge":"une personne qui observe beaucoup mais manque encore de maturité","evolution":"un message qui demande d'être vérifié, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CAVALIER_EPEES","name":"Cavalier d'Épées","arcana":"mineur","rank":"Cavalier","element":"Air","polarity":0,"keywords":["épées","cavalier","air"],"short":"Une décision rapide, un débat ou une personne très directe.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une décision rapide, un débat ou une personne très directe","challenge":"une confrontation ou une décision prise trop vite","evolution":"une action franche qui coupe l'hésitation"},"reversed":{"situation":"une personne agressive, précipitée ou incapable d'écouter","challenge":"une confrontation ou une décision prise trop vite","evolution":"une action franche qui coupe l'hésitation, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"REINE_EPEES","name":"Reine d'Épées","arcana":"mineur","rank":"Reine","element":"Air","polarity":1,"keywords":["épées","reine","air"],"short":"Une personne lucide, indépendante et capable de poser des limites.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une personne lucide, indépendante et capable de poser des limites","challenge":"une exigence légitime qui peut devenir froide si l'émotion est niée","evolution":"une parole précise qui remet les choses à leur place"},"reversed":{"situation":"une personne dure, blessée ou qui utilise la distance pour se protéger","challenge":"une exigence légitime qui peut devenir froide si l'émotion est niée","evolution":"une parole précise qui remet les choses à leur place, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"ROI_EPEES","name":"Roi d'Épées","arcana":"mineur","rank":"Roi","element":"Air","polarity":1,"keywords":["épées","roi","air"],"short":"Une personne rationnelle, compétente et capable de trancher.","advice":"Clarifiez les faits et prenez une décision nette.","upright":{"situation":"une personne rationnelle, compétente et capable de trancher","challenge":"un pouvoir intellectuel utilisé sans assez d'écoute","evolution":"une décision fondée sur l'expérience et les faits"},"reversed":{"situation":"une autorité rigide, manipulatrice ou trop détachée des émotions","challenge":"un pouvoir intellectuel utilisé sans assez d'écoute","evolution":"une décision fondée sur l'expérience et les faits, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"AS_DENIERS","name":"As de Deniers","arcana":"mineur","rank":"As","element":"Terre","polarity":1,"keywords":["deniers","as","terre"],"short":"Une occasion matérielle, un contrat ou une base solide.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une occasion matérielle, un contrat ou une base solide","challenge":"une proposition intéressante qui doit être vérifiée dans les détails","evolution":"un commencement concret qui peut produire des résultats"},"reversed":{"situation":"une occasion retardée, un manque de moyens ou une sécurité encore fragile","challenge":"une proposition intéressante qui doit être vérifiée dans les détails","evolution":"un commencement concret qui peut produire des résultats, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DEUX_DENIERS","name":"Deux de Deniers","arcana":"mineur","rank":"Deux","element":"Terre","polarity":0,"keywords":["deniers","deux","terre"],"short":"La gestion de plusieurs priorités et la nécessité de garder l'équilibre.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"la gestion de plusieurs priorités et la nécessité de garder l'équilibre","challenge":"un équilibre précaire qui demande de choisir une priorité","evolution":"une adaptation habile à un contexte changeant"},"reversed":{"situation":"une désorganisation, une dépense mal maîtrisée ou trop de choses menées ensemble","challenge":"un équilibre précaire qui demande de choisir une priorité","evolution":"une adaptation habile à un contexte changeant, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"TROIS_DENIERS","name":"Trois de Deniers","arcana":"mineur","rank":"Trois","element":"Terre","polarity":1,"keywords":["deniers","trois","terre"],"short":"Une compétence reconnue, une collaboration ou un travail bien construit.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une compétence reconnue, une collaboration ou un travail bien construit","challenge":"un projet qui souffre d'un manque d'organisation collective","evolution":"une progression grâce à des compétences complémentaires"},"reversed":{"situation":"un manque de coordination, une qualité insuffisante ou des rôles mal définis","challenge":"un projet qui souffre d'un manque d'organisation collective","evolution":"une progression grâce à des compétences complémentaires, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"QUATRE_DENIERS","name":"Quatre de Deniers","arcana":"mineur","rank":"Quatre","element":"Terre","polarity":1,"keywords":["deniers","quatre","terre"],"short":"La protection des acquis et le besoin de sécurité.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"la protection des acquis et le besoin de sécurité","challenge":"un attachement matériel qui limite le mouvement","evolution":"une base stable qu'il faut utiliser sans s'y enfermer"},"reversed":{"situation":"la peur de perdre, l'avarice ou au contraire une ouverture plus généreuse","challenge":"un attachement matériel qui limite le mouvement","evolution":"une base stable qu'il faut utiliser sans s'y enfermer, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CINQ_DENIERS","name":"Cinq de Deniers","arcana":"mineur","rank":"Cinq","element":"Terre","polarity":-1,"keywords":["deniers","cinq","terre"],"short":"Une inquiétude matérielle, un sentiment d'exclusion ou une période de manque.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une inquiétude matérielle, un sentiment d'exclusion ou une période de manque","challenge":"une peur de manquer qui commence à se calmer","evolution":"un besoin de soutien concret et de solidarité"},"reversed":{"situation":"une aide disponible, une amélioration ou la sortie progressive d'une difficulté","challenge":"une peur de manquer qui commence à se calmer","evolution":"un besoin de soutien concret et de solidarité, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SIX_DENIERS","name":"Six de Deniers","arcana":"mineur","rank":"Six","element":"Terre","polarity":1,"keywords":["deniers","six","terre"],"short":"Un échange équitable, une aide, un paiement ou un partage de ressources.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"un échange équitable, une aide, un paiement ou un partage de ressources","challenge":"une dépendance ou une générosité qui n'est pas totalement désintéressée","evolution":"un soutien concret et une meilleure circulation des moyens"},"reversed":{"situation":"une dette morale, une aide conditionnelle ou un déséquilibre dans ce qui est donné","challenge":"une dépendance ou une générosité qui n'est pas totalement désintéressée","evolution":"un soutien concret et une meilleure circulation des moyens, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"SEPT_DENIERS","name":"Sept de Deniers","arcana":"mineur","rank":"Sept","element":"Terre","polarity":0,"keywords":["deniers","sept","terre"],"short":"Une attente après un investissement et l'évaluation des résultats.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une attente après un investissement et l'évaluation des résultats","challenge":"un effort poursuivi par habitude malgré des résultats insuffisants","evolution":"une progression lente qui demande de mesurer ce qui fonctionne"},"reversed":{"situation":"une impatience, un rendement décevant ou une stratégie à revoir","challenge":"un effort poursuivi par habitude malgré des résultats insuffisants","evolution":"une progression lente qui demande de mesurer ce qui fonctionne, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"HUIT_DENIERS","name":"Huit de Deniers","arcana":"mineur","rank":"Huit","element":"Terre","polarity":0,"keywords":["deniers","huit","terre"],"short":"Le travail régulier, l'apprentissage et l'amélioration d'une compétence.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"le travail régulier, l'apprentissage et l'amélioration d'une compétence","challenge":"un travail beaucoup trop exigeant au regard du résultat","evolution":"une réussite construite par la méthode et la répétition"},"reversed":{"situation":"la routine, le perfectionnisme ou un effort mal reconnu","challenge":"un travail beaucoup trop exigeant au regard du résultat","evolution":"une réussite construite par la méthode et la répétition, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"NEUF_DENIERS","name":"Neuf de Deniers","arcana":"mineur","rank":"Neuf","element":"Terre","polarity":1,"keywords":["deniers","neuf","terre"],"short":"L'autonomie, le confort mérité et la valeur de ce qui a été construit.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"l'autonomie, le confort mérité et la valeur de ce qui a été construit","challenge":"un confort qui demande encore d'être sécurisé","evolution":"une stabilité personnelle et une meilleure confiance dans vos moyens"},"reversed":{"situation":"une dépendance matérielle, une solitude ou une sécurité plus apparente que réelle","challenge":"un confort qui demande encore d'être sécurisé","evolution":"une stabilité personnelle et une meilleure confiance dans vos moyens, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"DIX_DENIERS","name":"Dix de Deniers","arcana":"mineur","rank":"Dix","element":"Terre","polarity":1,"keywords":["deniers","dix","terre"],"short":"La stabilité familiale, le patrimoine et un résultat durable.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"la stabilité familiale, le patrimoine et un résultat durable","challenge":"un enjeu d'héritage, de logement ou de famille qui complique l'accord","evolution":"une construction capable de durer et de se transmettre"},"reversed":{"situation":"un désaccord familial, une fragilité patrimoniale ou une sécurité menacée","challenge":"un enjeu d'héritage, de logement ou de famille qui complique l'accord","evolution":"une construction capable de durer et de se transmettre, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"VALET_DENIERS","name":"Valet de Deniers","arcana":"mineur","rank":"Valet","element":"Terre","polarity":0,"keywords":["deniers","valet","terre"],"short":"Une proposition, une formation ou une personne sérieuse qui apprend.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une proposition, une formation ou une personne sérieuse qui apprend","challenge":"une personne volontaire mais encore inexpérimentée","evolution":"une nouvelle piste réaliste et perfectible"},"reversed":{"situation":"un message peu concret, une lenteur ou une occasion insuffisamment préparée","challenge":"une personne volontaire mais encore inexpérimentée","evolution":"une nouvelle piste réaliste et perfectible, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"CAVALIER_DENIERS","name":"Cavalier de Deniers","arcana":"mineur","rank":"Cavalier","element":"Terre","polarity":0,"keywords":["deniers","cavalier","terre"],"short":"Une personne fiable, constante et attentive aux détails.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une personne fiable, constante et attentive aux détails","challenge":"une personne sérieuse mais difficile à faire changer de rythme","evolution":"une progression sûre grâce à la persévérance"},"reversed":{"situation":"une lenteur excessive, un entêtement ou une routine qui bloque l'évolution","challenge":"une personne sérieuse mais difficile à faire changer de rythme","evolution":"une progression sûre grâce à la persévérance, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"REINE_DENIERS","name":"Reine de Deniers","arcana":"mineur","rank":"Reine","element":"Terre","polarity":1,"keywords":["deniers","reine","terre"],"short":"Une personne pragmatique, protectrice et capable d'organiser le quotidien.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une personne pragmatique, protectrice et capable d'organiser le quotidien","challenge":"un besoin de tout sécuriser qui rend le changement difficile","evolution":"une aide concrète et un sens solide des priorités"},"reversed":{"situation":"une personne trop préoccupée par la sécurité ou qui porte une charge excessive","challenge":"un besoin de tout sécuriser qui rend le changement difficile","evolution":"une aide concrète et un sens solide des priorités, mais seulement après avoir corrigé ce qui freine la situation"}},{"id":"ROI_DENIERS","name":"Roi de Deniers","arcana":"mineur","rank":"Roi","element":"Terre","polarity":1,"keywords":["deniers","roi","terre"],"short":"Une personne stable, expérimentée et à l'aise avec les responsabilités matérielles.","advice":"Sécurisez les moyens, les délais et les engagements.","upright":{"situation":"une personne stable, expérimentée et à l'aise avec les responsabilités matérielles","challenge":"un pouvoir financier ou matériel qui impose ses conditions","evolution":"une décision solide, un financement ou un appui professionnel"},"reversed":{"situation":"une autorité matérialiste, possessive ou trop centrée sur le rendement","challenge":"un pouvoir financier ou matériel qui impose ses conditions","evolution":"une décision solide, un financement ou un appui professionnel, mais seulement après avoir corrigé ce qui freine la situation"}}];
+
+/* ===================== Astronomie réelle (Lune) — reprise et vérifiée de VoyantPilote ===================== */
+function jd(d){ return d.getTime()/864e5 + 2440587.5 }
+function daysJ2000(d){ return jd(d) - 2451545 }
+function normDeg(x){ x = x % 360; if (x < 0) x += 360; return x }
+function rad(x){ return x * Math.PI / 180 }
+const ZODIAC = ["Bélier","Taureau","Gémeaux","Cancer","Lion","Vierge","Balance","Scorpion","Sagittaire","Capricorne","Verseau","Poissons"];
+const ZODIAC_KEY = ["Belier","Taureau","Gemeaux","Cancer","Lion","Vierge","Balance","Scorpion","Sagittaire","Capricorne","Verseau","Poissons"];
+const ZODIAC_ELEMENT = {Belier:"Feu",Taureau:"Terre",Gemeaux:"Air",Cancer:"Eau",Lion:"Feu",Vierge:"Terre",Balance:"Air",Scorpion:"Eau",Sagittaire:"Feu",Capricorne:"Terre",Verseau:"Air",Poissons:"Eau"};
+
+function sunSign(dateStr){
+  if(!dateStr) return "";
+  const d = new Date(dateStr+"T12:00:00");
+  if (isNaN(d)) return "";
+  const m = d.getMonth()+1, day = d.getDate();
+  const t = m*100+day;
+  const bounds = [["Capricorne",120],["Verseau",219],["Poissons",320],["Belier",420],["Taureau",521],["Gemeaux",621],["Cancer",723],["Lion",823],["Vierge",923],["Balance",1023],["Scorpion",1122],["Sagittaire",1222],["Capricorne",1232]];
+  const found = bounds.find(b => t < b[1]);
+  return (found ? found[0] : "Capricorne");
+}
+function signLabel(key){ const i = ZODIAC_KEY.indexOf(key); return i>=0 ? ZODIAC[i] : key }
+
+function moonLongitude(date){
+  const n = daysJ2000(date);
+  const L = normDeg(218.3164477 + 13.17639648*n);
+  const D = normDeg(297.8501921 + 12.19074912*n);
+  const Msun = normDeg(357.5291092 + 0.98560028*n);
+  const M = normDeg(134.9633964 + 13.06499295*n);
+  let lon = L
+    + 6.289*Math.sin(rad(M)) - 1.274*Math.sin(rad(2*D-M)) + 0.658*Math.sin(rad(2*D))
+    - 0.186*Math.sin(rad(Msun)) - 0.059*Math.sin(rad(2*D-2*M)) - 0.057*Math.sin(rad(2*D-Msun-M))
+    + 0.053*Math.sin(rad(2*D+M)) + 0.046*Math.sin(rad(2*D-Msun)) + 0.041*Math.sin(rad(M-Msun))
+    - 0.035*Math.sin(rad(D)) - 0.031*Math.sin(rad(M+Msun));
+  return normDeg(lon);
+}
+function moonSignKey(date){ return ZODIAC_KEY[Math.floor(moonLongitude(date)/30)] }
+const SYNODIC = 29.530588853;
+const REF_NEW_MOON = Date.UTC(2026,8,11,3,27,0)/864e5 + 2440587.5;
+function moonPhase(date){
+  let days = jd(date) - REF_NEW_MOON;
+  let t = days % SYNODIC; if (t<0) t += SYNODIC;
+  const frac = t / SYNODIC;
+  const illum = Math.round(100*(1-Math.cos(2*Math.PI*frac))/2);
+  let name;
+  if (frac<.02||frac>.98) name="nouvelle lune";
+  else if (frac<.25) name="lune montante, premier croissant";
+  else if (frac<.27) name="premier quartier";
+  else if (frac<.48) name="lune gibbeuse croissante";
+  else if (frac<.52) name="pleine lune";
+  else if (frac<.73) name="lune gibbeuse décroissante";
+  else if (frac<.77) name="dernier quartier";
+  else name="dernier croissant";
+  return {name, illum};
+}
+const DAY_PLANET = {0:["dimanche","Soleil"],1:["lundi","Lune"],2:["mardi","Mars"],3:["mercredi","Mercure"],4:["jeudi","Jupiter"],5:["vendredi","Vénus"],6:["samedi","Saturne"]};
+
+/* ===================== Horoscope mondial : traditions réelles combinées =====================
+   Chaque tradition ci-dessous est une donnée réelle et vérifiable (dates officielles du calendrier
+   lunaire chinois, ayanamsa védique publié, calendrier celte des arbres popularisé par Robert Graves,
+   zodiaque égyptien moderne du XXe siècle) — présentées côte à côte, jamais fusionnées en une seule
+   "vérité". Impossible d'inclure absolument toutes les traditions du monde (des centaines existent,
+   souvent locales ou contradictoires) : celles retenues ici sont les systèmes majeurs et documentés. */
+
+// --- Chinois : cycle sexagésimal réel, ancré sur 1984 (Jia-Zi, Rat de Bois Yang) et vérifié contre
+// les dates officielles du Nouvel An lunaire — l'année zodiacale change au Nouvel An, pas au 1er janvier.
+const CNY_DATES = {1930:"01-30",1931:"02-17",1932:"02-06",1933:"01-26",1934:"02-14",1935:"02-04",1936:"01-24",1937:"02-11",1938:"01-31",1939:"02-19",1940:"02-08",1941:"01-27",1942:"02-15",1943:"02-04",1944:"01-25",1945:"02-13",1946:"02-01",1947:"01-22",1948:"02-10",1949:"01-29",1950:"02-17",1951:"02-06",1952:"01-27",1953:"02-14",1954:"02-03",1955:"01-24",1956:"02-12",1957:"01-31",1958:"02-18",1959:"02-08",1960:"01-28",1961:"02-15",1962:"02-05",1963:"01-25",1964:"02-13",1965:"02-02",1966:"01-21",1967:"02-09",1968:"01-30",1969:"02-17",1970:"02-06",1971:"01-27",1972:"02-15",1973:"02-03",1974:"01-23",1975:"02-11",1976:"01-31",1977:"02-18",1978:"02-07",1979:"01-28",1980:"02-16",1981:"02-05",1982:"01-25",1983:"02-13",1984:"02-02",1985:"02-20",1986:"02-09",1987:"01-29",1988:"02-17",1989:"02-06",1990:"01-27",1991:"02-15",1992:"02-04",1993:"01-23",1994:"02-10",1995:"01-31",1996:"02-19",1997:"02-07",1998:"01-28",1999:"02-16",2000:"02-05",2001:"01-24",2002:"02-12",2003:"02-01",2004:"01-22",2005:"02-09",2006:"01-29",2007:"02-18",2008:"02-07",2009:"01-26",2010:"02-14",2011:"02-03",2012:"01-23",2013:"02-10",2014:"01-31",2015:"02-19",2016:"02-08",2017:"01-28",2018:"02-16",2019:"02-05",2020:"01-25",2021:"02-12",2022:"02-01",2023:"01-22",2024:"02-10",2025:"01-29",2026:"02-17",2027:"02-06",2028:"01-26",2029:"02-13",2030:"02-03",2031:"01-23",2032:"02-11",2033:"01-31",2034:"02-19",2035:"02-08",2036:"01-28",2037:"02-15",2038:"02-04",2039:"01-24",2040:"02-12"};
+const CHINESE_ANIMAL = ["Rat","Buffle","Tigre","Lapin","Dragon","Serpent","Cheval","Chèvre","Singe","Coq","Chien","Cochon"];
+const CHINESE_ANIMAL_TRAIT = {
+  Rat:"la vivacité d'esprit et le sens de l'opportunité", Buffle:"la persévérance et la solidité tranquille",
+  Tigre:"le courage et l'instinct de décision", Lapin:"la diplomatie et la prudence élégante",
+  Dragon:"la force et l'ambition visible", Serpent:"l'intuition et la stratégie discrète",
+  Cheval:"la liberté et l'énergie en mouvement", Chèvre:"la sensibilité et le sens artistique",
+  Singe:"l'ingéniosité et la vivacité d'esprit", Coq:"la rigueur et la fierté du travail bien fait",
+  Chien:"la loyauté et le sens de la justice", Cochon:"la générosité et la joie de vivre simple"
+};
+const CHINESE_ELEMENT = ["Bois","Bois","Feu","Feu","Terre","Terre","Métal","Métal","Eau","Eau"];
+const CHINESE_POLARITY = ["Yang","Yin"];
+function chineseElementPhrase(el){ return (el==="Eau" ? "d'" : "de ") + el; }
+function chineseZodiacYear(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+"T12:00:00");
+  if (isNaN(d)) return null;
+  const y = d.getFullYear();
+  const mmdd = String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const cnyThisYear = CNY_DATES[y] || "02-05"; // moyenne approximative pour les années hors table
+  return mmdd < cnyThisYear ? y-1 : y;
+}
+function chineseZodiac(dateStr){
+  const ezy = chineseZodiacYear(dateStr);
+  if (ezy === null) return null;
+  const animalIdx = (((ezy - 1984) % 12) + 12) % 12;
+  const stemIdx = (((ezy - 1984) % 10) + 10) % 10;
+  const animal = CHINESE_ANIMAL[animalIdx];
+  return { year: ezy, animal, element: CHINESE_ELEMENT[stemIdx], polarity: CHINESE_POLARITY[stemIdx % 2], trait: CHINESE_ANIMAL_TRAIT[animal] };
+}
+// Trigones d'affinité (signes espacés de 4 ans) et oppositions (espacés de 6 ans) — règles classiques
+// de l'astrologie chinoise traditionnelle.
+const CHINESE_TRINES = [[0,4,8],[1,5,9],[2,6,10],[3,7,11]];
+function chineseAffinity(idxA, idxB){
+  if (idxA === idxB) return "miroir";
+  if ((idxA+6)%12 === idxB) return "opposition";
+  if (CHINESE_TRINES.some(t => t.includes(idxA) && t.includes(idxB))) return "trigone";
+  return "neutre";
+}
+
+// --- Védique (sidéral) : même logique que le zodiaque occidental tropical déjà utilisé (sunSign),
+// mais décalée de l'ayanamsa réel (précession des équinoxes, ~50 secondes d'arc/an, valeur Lahiri
+// publiée : 23°51'12" au 1er janvier 2000) plutôt que calée sur les équinoxes actuels.
+function ayanamsaDeg(year){ return 23.8533 + (year-2000)*0.013889; }
+function vedicSign(dateStr){
+  if(!dateStr) return "";
+  const d = new Date(dateStr+"T12:00:00");
+  if (isNaN(d)) return "";
+  const offsetDays = Math.round(ayanamsaDeg(d.getFullYear()) * 365.2422/360);
+  const shifted = new Date(d.getTime() - offsetDays*864e5);
+  return sunSign(`${shifted.getFullYear()}-${String(shifted.getMonth()+1).padStart(2,"0")}-${String(shifted.getDate()).padStart(2,"0")}`);
+}
+
+function inRangeMMDD(t, s, e){ return s<=e ? (t>=s && t<=e) : (t>=s || t<=e); }
+
+// --- Celte : calendrier des 13 arbres (tradition druidique popularisée par Robert Graves, "The White Goddess")
+const CELTIC_TREES = [
+  ["Bouleau",12,24,1,20], ["Sorbier",1,21,2,17], ["Frêne",2,18,3,17], ["Aulne",3,18,4,14],
+  ["Saule",4,15,5,12], ["Aubépine",5,13,6,9], ["Chêne",6,10,7,7], ["Houx",7,8,8,4],
+  ["Noisetier",8,5,9,1], ["Vigne",9,2,9,29], ["Lierre",9,30,10,27], ["Roseau",10,28,11,24], ["Sureau",11,25,12,23]
+];
+const CELTIC_TRAIT = {
+  Bouleau:"le renouveau et les commencements nets", Sorbier:"la protection et la clarté d'intuition",
+  Frêne:"la connexion entre les mondes et le sens du lien", Aulne:"la détermination tranquille et le courage discret",
+  Saule:"la sensibilité et l'adaptabilité", Aubépine:"la prudence et la patience face à l'incertain",
+  Chêne:"la force et le leadership naturel", Houx:"la loyauté et la maîtrise de soi",
+  Noisetier:"la sagesse et la curiosité", Vigne:"le plaisir, le charme et le goût du partage",
+  Lierre:"la ténacité et la fidélité", Roseau:"la franchise et le besoin de vérité", Sureau:"la transformation et la fin de cycle"
+};
+function celticSign(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+"T12:00:00");
+  if (isNaN(d)) return null;
+  const t = (d.getMonth()+1)*100 + d.getDate();
+  for (const [name,sm,sd,em,ed] of CELTIC_TREES){
+    if (inRangeMMDD(t, sm*100+sd, em*100+ed)) return { name, trait: CELTIC_TRAIT[name] };
+  }
+  return null;
+}
+
+// --- Égyptien : zodiaque moderne (réinterprétation du XXe siècle associant des divinités égyptiennes
+// à des plages de dates), très répandu mais explicitement présenté comme tel — pas un texte antique.
+const EGYPTIAN_RANGES = [
+  [1,1,1,7,"Nil"],[6,19,6,28,"Nil"],[9,1,9,7,"Nil"],[11,18,11,26,"Nil"],
+  [1,8,1,21,"Amon-Ra"],[2,1,2,11,"Amon-Ra"],
+  [1,22,1,31,"Mut"],[9,8,9,22,"Mut"],
+  [2,12,2,29,"Geb"],[8,20,8,31,"Geb"],
+  [3,1,3,10,"Osiris"],[11,27,12,18,"Osiris"],
+  [3,11,3,31,"Isis"],[10,18,10,29,"Isis"],[12,19,12,31,"Isis"],
+  [4,1,4,19,"Thot"],[11,8,11,17,"Thot"],
+  [4,20,5,7,"Horus"],[8,12,8,19,"Horus"],
+  [5,8,5,27,"Anubis"],[6,29,7,13,"Anubis"],
+  [5,28,6,18,"Seth"],[9,28,10,2,"Seth"],
+  [7,14,7,28,"Bastet"],[9,23,9,27,"Bastet"],[10,3,10,17,"Bastet"],
+  [7,29,8,11,"Sekhmet"],[10,30,11,7,"Sekhmet"]
+];
+const EGYPTIAN_TRAIT = {
+  "Nil":"la stabilité et la fertilité tranquille des projets bien nourris", "Amon-Ra":"la clarté d'esprit et la force créatrice",
+  "Mut":"la protection et l'instinct face aux situations", "Geb":"l'ancrage et la solidité du terrain",
+  "Osiris":"la transformation et la capacité à renaître d'une épreuve", "Isis":"l'intuition et le pouvoir de réparer ce qui est brisé",
+  "Thot":"la sagesse, l'analyse et la précision", "Horus":"la vision claire et l'ambition légitime",
+  "Anubis":"la rigueur et le passage assumé d'une étape à l'autre", "Seth":"la force du changement, parfois brutale mais nécessaire",
+  "Bastet":"la sensualité, la souplesse et la protection du foyer", "Sekhmet":"l'intensité, le courage et la volonté de défendre ce qui compte"
+};
+function egyptianSign(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+"T12:00:00");
+  if (isNaN(d)) return null;
+  const t = (d.getMonth()+1)*100 + d.getDate();
+  for (const [sm,sd,em,ed,name] of EGYPTIAN_RANGES){
+    if (inRangeMMDD(t, sm*100+sd, em*100+ed)) return { name, trait: EGYPTIAN_TRAIT[name] };
+  }
+  return null;
+}
+
+function pad2(n){ return String(n).padStart(2,"0"); }
+function isoDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+
+// Horoscope complet (jour / semaine / mois / année) : les traditions réelles ci-dessus (chinoise,
+// védique, celte, égyptienne) restent le socle du calcul — dates officielles, ayanamsa publié,
+// calendriers documentés — mais ne sont plus citées nommément dans le texte affiché. Yann a demandé
+// un rendu direct et clair, sans avoir à connaître les sources ; la rigueur du calcul ne change pas,
+// seule sa présentation devient unifiée, à la première personne, dans la voix de Nostrann.
+function isoWeekNumber(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7; // lundi = 0
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const diff = (date - firstThursday) / 864e5;
+  return 1 + Math.round(diff / 7);
+}
+function vpTraitsFor(signKey){
+  const t = VP150_ASTRO[signKey] || ["votre sensibilité","l'hésitation","retrouver votre axe"];
+  return { i: t[0], r: t[1], a: t[2] };
+}
+const HORO_DAY_TEMPLATES = [
+  (i,r,a) => `Aujourd'hui, ${cap(i)} mène la journée : restez vigilant face à ${r}, elle peut vous rapprocher ${deElide(a)}.`,
+  (i,r,a) => `La journée s'ouvre sous le signe ${deElide(i)} — ${r} peut se manifester, mais ${a} reste à votre portée avant ce soir.`,
+  (i,r,a) => `Aujourd'hui demande surtout ${i} : composez avec ${r} sans vous y arrêter, et gardez ${a} en ligne de mire.`,
+  (i,r,a) => `Une journée portée par ${i}. ${cap(r)} peut freiner un instant, ${a} reste néanmoins atteignable.`
+];
+const HORO_WEEK_TEMPLATES = [
+  (i,r,a) => `Cette semaine avance sous le signe ${deElide(i)} : les premiers jours peuvent encore se heurter à ${r}, mais elle ouvre la voie vers ${a} d'ici le week-end.`,
+  (i,r,a) => `La semaine met ${i} à l'épreuve : gardez un œil sur ${r}, sans perdre de vue que ${a} reste à portée.`,
+  (i,r,a) => `Semaine active : ${cap(i)} porte vos décisions, ${r} teste la patience, et ${a} se profile vers la fin de semaine.`,
+  (i,r,a) => `Une semaine en deux temps — d'abord composer avec ${r}, ensuite laisser ${i} vous rapprocher ${deElide(a)}.`
+];
+const HORO_MONTH_TEMPLATES = [
+  (i,r,a) => `Ce mois-ci installe un climat plus large : ${i} domine le fond de l'air, ${r} demande à être apprivoisé sur la durée, et ${a} devient réaliste avant la fin du mois.`,
+  (i,r,a) => `Le mois s'annonce structurant — ${cap(r)} peut peser en première quinzaine, mais ${i} reprend le dessus et rapproche ${deElide(a)}.`,
+  (i,r,a) => `Sur ce mois, ${i} guide le rythme général ; ${r} reste la vigilance à garder, ${a} la direction à tenir.`,
+  (i,r,a) => `Un mois de fond plutôt que d'éclat : ${i} travaille en profondeur, ${r} s'apaise peu à peu, ${a} se construit pas à pas.`
+];
+function buildFullHoroscope({ birthDate, sSignKey, now, mSign, mPhase, dp }){
+  if (!sSignKey) return null;
+  const todayStr = isoDate(now);
+  const cz = chineseZodiac(birthDate);
+  const czNow = chineseZodiac(todayStr);
+  const vSignKey = vedicSign(birthDate);
+  const celToday = celticSign(todayStr);
+  const egyToday = egyptianSign(todayStr);
+  const wt = vpTraitsFor(sSignKey);
+
+  const daySeed = horoscopeSeedToday(sSignKey);
+  const weekSeed = `${now.getFullYear()}-W${isoWeekNumber(now)}:${sSignKey}`;
+  const monthSeed = `${now.getFullYear()}-${now.getMonth()+1}:${sSignKey}`;
+
+  let dayText = vpCase(vpPickPlain("horoDay:"+daySeed, HORO_DAY_TEMPLATES.map(f=>f(wt.i,wt.r,wt.a))));
+  dayText += ` La Lune, ${mPhase.name} sous la régence de ${dp[1]} ce ${dp[0]}, appuie ce mouvement.`;
+  if (celToday && egyToday){
+    dayText += ` Le fond de la journée porte aussi ${celToday.trait} et ${egyToday.trait}.`;
+  }
+
+  const weekText = vpCase(vpPickPlain("horoWeek:"+weekSeed, HORO_WEEK_TEMPLATES.map(f=>f(wt.i,wt.r,wt.a))));
+
+  let monthText = vpCase(vpPickPlain("horoMonth:"+monthSeed, HORO_MONTH_TEMPLATES.map(f=>f(wt.i,wt.r,wt.a))));
+  if (vSignKey && vSignKey !== sSignKey){
+    const vt = vpTraitsFor(vSignKey);
+    monthText += ` Sur un plan plus profond, ${vt.a} reste l'axe à privilégier ce mois-ci.`;
+  }
+
+  let yearText;
+  if (cz && czNow){
+    const idxA = CHINESE_ANIMAL.indexOf(cz.animal), idxB = CHINESE_ANIMAL.indexOf(czNow.animal);
+    const aff = chineseAffinity(idxA, idxB);
+    yearText = `L'année porte un climat collectif tourné vers ${czNow.trait}.`;
+    if (aff === "miroir") yearText += ` Pour vous, c'est une année charnière : le cycle qui vous a vu naître revient. Un moment à aborder avec prudence plutôt qu'avec précipitation.`;
+    else if (aff === "trigone") yearText += ` Pour vous, c'est une année d'affinité naturelle : le terrain vous est plutôt favorable.`;
+    else if (aff === "opposition") yearText += ` Pour vous, c'est une année de tension plus directe : elle demande davantage de prudence, et aussi plus de discipline.`;
+    else yearText += ` Pour vous, l'année reste neutre : la marge de manœuvre dépend surtout de vos choix.`;
+  } else {
+    yearText = `${cap(wt.i)} reste le fil conducteur de votre année : ${wt.r} demande de la patience, ${wt.a} en est le cap.`;
+  }
+
+  return {
+    day: dayText.replace(/\s+/g," ").trim(),
+    week: weekText.replace(/\s+/g," ").trim(),
+    month: monthText.replace(/\s+/g," ").trim(),
+    year: yearText.replace(/\s+/g," ").trim()
+  };
+}
+
+/* ===================== Thèmes proposés au client (choix multiple) ===================== */
+const THEMES = [
+  { id:"love", label:"Amour", domain:"love", phrase:"de cœur", questions:[
+    "Vais-je rencontrer quelqu'un prochainement ?",
+    "Cette relation va-t-elle durer ?",
+    "Cette personne pense-t-elle à moi ?",
+    "Est-ce le bon moment pour tourner la page ?",
+    "Dois-je lui avouer mes sentiments ?",
+    "Cette relation à distance va-t-elle tenir ?",
+    "Vais-je pardonner et repartir sur de bonnes bases ?",
+    "Cette rencontre récente va-t-elle évoluer ?"
+  ]},
+  { id:"money", label:"Argent", domain:"money", phrase:"d'argent", questions:[
+    "Ma situation financière va-t-elle s'améliorer ?",
+    "Dois-je me lancer dans cet achat ou cet investissement ?",
+    "Vais-je recevoir de l'argent prochainement ?",
+    "Cette dépense est-elle une bonne idée en ce moment ?",
+    "Vais-je réussir à sortir de mes dettes ?",
+    "Ce projet va-t-il être rentable ?",
+    "Dois-je négocier maintenant ?",
+    "Cette période d'incertitude financière va-t-elle se stabiliser ?"
+  ]},
+  { id:"work", label:"Emploi", domain:"work", phrase:"de carrière", questions:[
+    "Vais-je obtenir ce poste ou ce contrat ?",
+    "Dois-je changer de travail maintenant ?",
+    "Cette décision professionnelle est-elle la bonne ?",
+    "Une évolution positive m'attend-elle bientôt ?",
+    "Cette formation va-t-elle m'ouvrir des portes ?",
+    "Vais-je être reconnu à ma juste valeur ?",
+    "Dois-je quitter ce poste malgré l'incertitude ?",
+    "Cette collaboration professionnelle va-t-elle bien se passer ?"
+  ]},
+  { id:"chomage", label:"Chômage", domain:"work", phrase:"de reconversion", questions:[
+    "Vais-je retrouver un emploi rapidement ?",
+    "Cette reconversion est-elle la bonne voie ?",
+    "Dois-je accepter la prochaine offre qui se présente ?",
+    "Cette formation va-t-elle déboucher sur un emploi ?",
+    "Dois-je élargir mes recherches à d'autres secteurs ?",
+    "Vais-je retrouver confiance en moi rapidement ?"
+  ]},
+  { id:"move", label:"Déménagement", domain:"money", phrase:"de changement de vie", questions:[
+    "Ce déménagement va-t-il se concrétiser ?",
+    "Est-ce le bon moment pour changer de lieu de vie ?",
+    "Ce nouveau logement va-t-il m'apporter ce que j'espère ?",
+    "Vais-je trouver le logement qui me correspond ?",
+    "Ce changement de région est-il une bonne idée ?",
+    "Les démarches vont-elles se dérouler sans accroc ?"
+  ]},
+  { id:"family", label:"Famille", domain:"love", phrase:"de famille", questions:[
+    "Vais-je me rapprocher d'un proche prochainement ?",
+    "Cette tension familiale va-t-elle s'apaiser ?",
+    "Puis-je compter sur ma famille dans cette période ?",
+    "Ce conflit familial va-t-il se résoudre ?",
+    "Vais-je retrouver ma place dans la famille ?",
+    "Dois-je prendre mes distances pour un temps ?"
+  ]},
+  { id:"friendship", label:"Amitié", domain:"love", phrase:"d'amitié", questions:[
+    "Cette amitié va-t-elle durer ?",
+    "Dois-je faire le premier pas vers cette personne ?",
+    "Puis-je vraiment faire confiance à cet ami ?",
+    "Cette personne est-elle sincère avec moi ?",
+    "Vais-je me faire de nouveaux amis prochainement ?",
+    "Dois-je mettre fin à cette amitié ?"
+  ]},
+  { id:"health", label:"Santé & énergie", domain:"general", phrase:"de vitalité", questions:[
+    "Vais-je retrouver de l'énergie prochainement ?",
+    "Est-ce le bon moment pour prendre soin de moi ?",
+    "Cette période de fatigue touche-t-elle à sa fin ?",
+    "Vais-je retrouver un bon équilibre de vie ?",
+    "Ce changement d'habitudes va-t-il porter ses fruits ?",
+    "Dois-je ralentir le rythme en ce moment ?"
+  ]},
+  { id:"projects", label:"Projets & voyages", domain:"general", phrase:"de projet", questions:[
+    "Ce projet va-t-il aboutir ?",
+    "Est-ce le bon moment pour partir ou me lancer ?",
+    "Ce changement va-t-il m'apporter ce que je cherche ?",
+    "Ce voyage va-t-il se passer comme je l'espère ?",
+    "Dois-je me lancer seul dans ce projet ?",
+    "Le bon moment est-il maintenant ou faut-il attendre ?"
+  ]},
+  { id:"general", label:"Vie en général", domain:"general", phrase:null, questions:[
+    "Une bonne nouvelle m'attend-elle bientôt ?",
+    "Suis-je sur le bon chemin actuellement ?",
+    "Dois-je faire confiance à mon intuition en ce moment ?",
+    "Vais-je traverser cette période difficile sereinement ?",
+    "Dois-je faire confiance à la personne qui m'entoure en ce moment ?",
+    "Un changement important approche-t-il ?"
+  ]}
+];
+function themeById(id){ return THEMES.find(t => t.id===id) || THEMES[THEMES.length-1]; }
+
+/* ===================== Verdict franc (Oui / Non / Conditionnel) — même moteur que VoyantPilote ===================== */
+const VERDICT_SUB = {
+  OUI: [
+    "Le verdict est net : la réponse est oui.",
+    "Le voile se lève sans détour ici — oui, la voie est ouverte.",
+    "Nostrann le dit sans détour : oui, cette énergie va dans votre sens."
+  ],
+  NON: [
+    "Les cartes sont nettes sur ce point : la réponse est non.",
+    "Le voile ne laisse planer aucun doute ici — non, ce n'est pas la voie.",
+    "Nostrann le dit sans détour : non, pas dans ces conditions."
+  ],
+  CONDITIONNEL: [
+    "Les cartes hésitent encore entre deux chemins.",
+    "Rien n'est figé : la réponse dépend encore de ce que vous choisirez.",
+    "Le voile reste trouble sur ce point précis — la suite s'écrit avec vos choix."
+  ]
+};
+const VERDICT_ICON = { OUI:"✓", NON:"✗", CONDITIONNEL:"◐" };
+const TENDANCE_SUFFIX = {
+  positive:" La tendance penche plutôt vers le oui.",
+  negative:" La tendance penche plutôt vers le non.",
+  neutral:" Vraiment partagé — la suite dépend des choix à venir."
+};
+function cardPolarityLabel(card, reversed){
+  let p = Number(card.polarity)||0;
+  if (reversed && p>0) p -= 1;
+  return p>0 ? "positive" : p<0 ? "negative" : "neutral";
+}
+function joinFr(arr){
+  if (arr.length===1) return arr[0];
+  if (arr.length===2) return `${arr[0]} et ${arr[1]}`;
+  return `${arr.slice(0,-1).join(", ")} et ${arr[arr.length-1]}`;
+}
+// Analyse nommée, carte par carte — pour que le verdict s'appuie sur une vraie lecture, pas sur une affirmation en l'air.
+function verdictReasoning(entries){
+  const named = entries.map(e => ({ name: e.card.name, label: cardPolarityLabel(e.card, e.reversed) }));
+  const pos = named.filter(n=>n.label==="positive").map(n=>n.name);
+  const neg = named.filter(n=>n.label==="negative").map(n=>n.name);
+  if (pos.length && !neg.length) return `${joinFr(pos)} ${pos.length>1?"vont":"va"} clairement dans ce sens.`;
+  if (neg.length && !pos.length) return `${joinFr(neg)} ${neg.length>1?"vont":"va"} clairement dans ce sens.`;
+  if (pos.length && neg.length) return `${joinFr(pos)} penche${pos.length>1?"nt":""} vers le oui, ${joinFr(neg)} vers le non.`;
+  return `Les trois cartes restent neutres sur ce point précis, sans y répondre directement.`;
+}
+function computeVerdict(entries){
+  const cc = entries.reduce((sum, e) => sum + (Number(e.card.polarity)||0) + (e.reversed ? -1 : 0), 0);
+  const code = cc>=1 ? "OUI" : cc<=-1 ? "NON" : "CONDITIONNEL";
+  let sub = VERDICT_SUB[code][Math.floor(Math.random()*VERDICT_SUB[code].length)];
+  if (code === "CONDITIONNEL"){
+    const last = entries[entries.length-1];
+    sub += TENDANCE_SUFFIX[cardPolarityLabel(last.card, last.reversed)];
+  }
+  const reasoning = verdictReasoning(entries);
+  return { code, cc, icon: VERDICT_ICON[code], sub, reasoning };
+}
+
+/* ===================== Horoscope réel du jour — même moteur que VoyantPilote ===================== */
+const VP150_ASTRO = {
+  Belier:["l'élan","l'impatience","voir les choses avancer"],
+  Taureau:["la constance","la peur de perdre vos repères","vous sentir en sécurité"],
+  Gemeaux:["la vivacité d'esprit","la dispersion","comprendre et parler"],
+  Cancer:["la sensibilité","le repli protecteur","préserver le lien"],
+  Lion:["la générosité","le besoin de reconnaissance","sentir que votre place compte"],
+  Vierge:["le discernement","la suranalyse","améliorer ce qui peut l'être"],
+  Balance:["la diplomatie","la peur de décevoir","retrouver un équilibre juste"],
+  Scorpion:["la profondeur","la méfiance","comprendre ce qui se cache derrière les apparences"],
+  Sagittaire:["le besoin d'espace","la précipitation","sentir que l'avenir reste ouvert"],
+  Capricorne:["la persévérance","la dureté envers vous-même","construire sur du solide"],
+  Verseau:["l'indépendance d'esprit","la distance émotionnelle","rester libre dans vos choix"],
+  Poissons:["l'intuition","l'idéalisation","protéger votre sensibilité"]
+};
+function vpHash(e){ let n=2166136261; const s=String(e); for(let t=0;t<s.length;t++){ n^=s.charCodeAt(t); n=Math.imul(n,16777619); } return n>>>0; }
+function vpPickPlain(seed, arr){ return arr && arr.length ? arr[vpHash(seed)%arr.length] : ""; }
+function vpCase(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ""; }
+// Contraction de "de" devant les traits/résistances (VP150_ASTRO), qui portent chacun leur propre
+// article ou aucun : "de la suranalyse" et "de l'élan" restent corrects tels quels, mais "de le
+// discernement" ou "de le besoin d'espace" (Vierge, Sagittaire, Cancer, Lion) sont fautifs — il faut
+// "du discernement" ; et l'aspiration (3e valeur, un groupe verbal sans article, ex. "améliorer ce qui
+// peut l'être" pour la Vierge) peut commencer par une voyelle nue et réclamer l'élision "d'".
+function deElide(s){
+  if (!s) return "de " + s;
+  if (/^le\s/.test(s)) return "du " + s.slice(3);
+  if (/^les\s/.test(s)) return "des " + s.slice(4);
+  if (/^[aeiouyàâäéèêëîïôöùûüÿAEIOUYÀÂÄÉÈÊËÎÏÔÖÙÛÜŸ]/.test(s)) return "d'" + s;
+  return "de " + s;
+}
+function horoscopeSeedToday(signKey){
+  const n = new Date();
+  return `${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}:${signKey}`;
+}
+function buildHoroscope(birthDateStr){
+  const signKey = sunSign(birthDateStr);
+  if (!signKey) return null;
+  const t = VP150_ASTRO[signKey] || ["votre sensibilité","l'hésitation","retrouver votre axe"];
+  const i = t[0], r = t[1], a = t[2];
+  const seed = horoscopeSeedToday(signKey);
+  const love = vpPickPlain("horoLove:"+seed, [
+    `misez sur ${i} pour avancer sereinement, sans laisser ${r} prendre toute la place.`,
+    `le cœur a surtout besoin ${deElide(a)} ; un geste ou un mot clair peut débloquer la situation.`,
+    `la période favorise ${i}, restez attentif à ${r} qui pourrait freiner un rapprochement.`,
+    `vous cherchez à ${a} ; laissez venir les choses sans forcer le rythme.`
+  ]);
+  const work = vpPickPlain("horoWork:"+seed, [
+    `${vpCase(i)} joue en votre faveur, mais ${r} peut ralentir une décision importante.`,
+    `misez sur votre capacité à ${a} pour faire avancer un dossier ou un projet.`,
+    `une opportunité se présente si vous ne laissez pas ${r} vous faire hésiter trop longtemps.`,
+    `la réussite passe par ${i}, avec un peu de patience.`
+  ]);
+  const money = vpPickPlain("horoMoney:"+seed, [
+    `restez concret : ${i} vous aide, mais vérifiez les chiffres avant de vous engager.`,
+    `une question d'argent se clarifie si vous parvenez à ${a}.`,
+    `évitez de décider sous le coup ${deElide(r)} ; prenez le temps de comparer.`,
+    `la période reste plutôt stable si vous gardez ${i} comme boussole.`
+  ]);
+  return {
+    sign: signLabel(signKey), element: ZODIAC_ELEMENT[signKey],
+    love: vpCase(love), work: vpCase(work), money: vpCase(money)
+  };
+}
+
+/* ===================== Nombres des astres — numérologie réelle, même moteur que VoyantPilote ===================== */
+function digitSum(n){ return String(n).split("").reduce((a,d)=>a+(+d||0),0); }
+function lifePathFromISO(dateStr){
+  if (!dateStr) return null;
+  const parts = dateStr.split("-").map(Number);
+  const y = parts[0], m = parts[1], d = parts[2];
+  if (!y || !m || !d) return null;
+  let t = digitSum(d) + digitSum(m) + digitSum(y);
+  while (t > 9 && t !== 11 && t !== 22) t = digitSum(t);
+  return t;
+}
+// Numérotation traditionnelle du Tarot de Marseille (ordre réel du jeu, 0 à 21)
+const MAJOR_NUMBER = {MAT:0,BATELEUR:1,PAPESSE:2,IMPERATRICE:3,EMPEREUR:4,PAPE:5,AMOUREUX:6,CHARIOT:7,JUSTICE:8,HERMITE:9,ROUE:10,FORCE:11,PENDU:12,ARCANE_XIII:13,TEMPERANCE:14,DIABLE:15,MAISON_DIEU:16,ETOILE:17,LUNE:18,SOLEIL:19,JUGEMENT:20,MONDE:21};
+const RANK_NUMBER = {As:1,Deux:2,Trois:3,Quatre:4,Cinq:5,Six:6,Sept:7,Huit:8,Neuf:9,Dix:10,Valet:11,Cavalier:12,Reine:13,Roi:14};
+function cardNumber(card){
+  return card.arcana === "majeur" ? (MAJOR_NUMBER[card.id] ?? 0) : (RANK_NUMBER[card.rank] || 1);
+}
+function toRange49(v){ return ((Math.round(v)-1) % 49 + 49) % 49 + 1; }
+// Combine tirage réel + ciel réel du jour + numérologie réelle de naissance en une grille façon Loto (5 + 1)
+function buildLuckyNumbers({cardEntries, now, moonLon, moonIllum, dayIdx, lifePath, sunSignIdx}){
+  const raw = cardEntries.map(e => cardNumber(e.card) * (e.reversed ? 3 : 1));
+  raw.push(moonLon, moonIllum * 4, (now.getDate()+1) * (now.getMonth()+2), (dayIdx+1) * 6);
+  if (lifePath) raw.push(lifePath * 5);
+  if (sunSignIdx != null) raw.push((sunSignIdx+1) * 4);
+
+  const seen = new Set();
+  const main = [];
+  let salt = 0;
+  for (const v of raw){
+    let n = toRange49(v + salt);
+    while (seen.has(n)) { salt++; n = toRange49(v + salt); }
+    seen.add(n); main.push(n); salt++;
+    if (main.length >= 5) break;
+  }
+  while (main.length < 5){
+    let n = toRange49(main[main.length-1] + 7 + salt);
+    while (seen.has(n)) { salt++; n = toRange49(main[main.length-1] + 7 + salt); }
+    seen.add(n); main.push(n); salt++;
+  }
+  main.sort((a,b)=>a-b);
+  const bonusRaw = cardNumber(cardEntries[2].card) + dayIdx + Math.round(moonIllum);
+  const bonus = ((bonusRaw-1) % 10 + 10) % 10 + 1;
+  return { main, bonus };
+}
+
+/* ===================== Voix de Nostrann ===================== */
+// Amorces courtes, sans détour : on donne la réponse, pas une mise en scène.
+const OPENERS = [
+  "Nostrann a regardé vos cartes avec attention —",
+  "Voici une lecture claire, sans détour —",
+  "Nostrann est allé chercher la réponse la plus juste —",
+  "Vos cartes sont nettes ; voici ce qu'elles disent —",
+  "Nostrann a pris le temps de bien lire ce tirage —"
+];
+const CLOSERS_BY_TONE = {
+  bad:["Le chemin se resserre ici, mais rien n'est jamais complètement fermé.","Prenez ce présage comme un avertissement, pas comme une condamnation.","Ce qui se referme laisse toujours une autre porte s'entrouvrir.","Nostrann ne vous laissera pas sans direction : revenez si le doute persiste.","Ce n'est pas une fin, c'est un virage — prenez-le sans vous en vouloir."]
+  ,neutral:["La suite reste entre vos mains plus qu'entre celles du destin.","Nostrann éclaire un chemin ; c'est vous qui posez le pas.","Ce que vous en ferez compte autant que ce que les cartes en disent.","Vous savez déjà, au fond, ce qu'il faut faire — les cartes ne font que le confirmer.","Nostrann vous accompagne, mais c'est votre pas qui compte."]
+  ,good:["Portez cette énergie avec confiance, sans la brusquer.","La voie s'ouvre — reste à la suivre avec constance.","Ce qui se dessine ici demande d'être accueilli, pas forcé.","Nostrann vous le confirme : cette énergie est réellement avec vous.","Avancez — rien ici ne vous retient plus que votre propre hésitation."]
+};
+// Amorces qui portent la conviction du conseil (le "ami tenace" plutôt que la généralité prudente)
+const ADVICE_LEADS = {
+  OUI:["Nostrann est catégorique :","Sans détour, sans hésiter :","La voie est libre, alors :","N'attendez pas plus longtemps :"],
+  NON:["Nostrann ne vous mentira pas :","Ici, il faut changer de cap :","Avant tout, entendez ceci :","La franchise d'abord :"],
+  CONDITIONNEL:["Ce qui fera basculer les choses, c'est vous :","Un seul geste compte vraiment ici :","Voici ce qui dépend entièrement de vous :","Nostrann vous le doit en ami :"]
+};
+// Variantes de transition pour éviter que chaque lecture suive exactement le même moule
+const PATH_LEADS = ["Le chemin qui s'ouvre","Ce que Nostrann voit venir","La direction à prendre","Ce qui se prépare pour vous","Le mouvement qui s'annonce"];
+const PATH_CONNECTORS = [
+  (ch,ev) => `${cap(ch)} doit d'abord se dénouer, avant de laisser place à ${lowerFirst(ev)}.`,
+  (ch,ev) => `Nostrann le voit clairement : ${lowerFirst(ch)} cède peu à peu la place à ${lowerFirst(ev)}.`,
+  (ch,ev) => `D'abord ${lowerFirst(ch)}. Ensuite, sans détour, ${lowerFirst(ev)}.`,
+  (ch,ev) => `Ne vous y trompez pas : ${lowerFirst(ch)} n'est qu'une étape — ce qui vous attend vraiment, c'est ${lowerFirst(ev)}.`,
+  (ch,ev) => `Traversez ${lowerFirst(ch)} sans vous y attarder ; ${lowerFirst(ev)} vous attend juste après.`
+];
+function toneFor(card, reversed){
+  if (card.arcana==="majeur" && !reversed) return "good";
+  if (reversed) return "bad";
+  return "neutral";
+}
+// Affirmation franche, positive ou négative, qui ouvre la lecture de la situation présente —
+// pour que le ton prenne position tout de suite, pas seulement dans le verdict final.
+const TONE_AFFIRM = {
+  good:["C'est plutôt positif :","Bonne nouvelle pour commencer :","Le signe est favorable, disons-le :","Nostrann le confirme franchement, c'est bon signe :"],
+  neutral:["Ni tout à fait oui, ni tout à fait non :","C'est plus nuancé qu'il n'y paraît :","Le signal est mêlé, mais lisible :","Ce n'est pas tranché, mais ce n'est pas fermé non plus :"],
+  bad:["Soyons francs, ce n'est pas simple :","Le signal est clair, et il est difficile :","Nostrann ne va pas enjoliver les choses :","C'est un signe qui demande de la prudence :"]
+};
+// Ouverture du bilan, tissée directement à partir de la situation réelle de la carte (upright/reversed selon le tirage) —
+// plus fiable que les champs love/work/money pré-écrits, qui contenaient des erreurs sur certaines cartes mineures.
+function domainText(face, domain){
+  const lead = domain==="love" ? "En amour" : domain==="work" ? "Sur le plan professionnel" : domain==="money" ? "Sur le plan matériel" : null;
+  return (lead ? `${lead}, ${lowerFirst(face.situation)}` : face.situation) + ".";
+}
+
+// Lien réel carte ↔ signe de naissance — même moteur que VoyantPilote (vpCardSignLink)
+const VP_ELEMENT_LINK = {
+  "Feu-Eau":"la carte apporte une énergie d'action là où votre signe ressent d'abord les choses : le mental et l'émotion doivent s'accorder ici",
+  "Eau-Feu":"votre signe ressent profondément alors que la carte pousse à agir vite : vérifiez ce que vous ressentez avant de décider",
+  "Feu-Terre":"la carte veut avancer vite, votre signe a besoin de stabilité : un compromis entre l'élan et la prudence s'impose",
+  "Terre-Feu":"votre signe cherche du concret, la carte pousse au mouvement : ne freinez pas trop longtemps une occasion réelle",
+  "Air-Terre":"la carte parle d'idées et de mouvement, votre signe a besoin de preuves concrètes : validez avant de vous engager",
+  "Terre-Air":"votre signe veut du solide, la carte ouvre sur de nouvelles idées : restez ouvert sans perdre vos repères",
+  "Air-Eau":"la carte raisonne, votre signe ressent : les deux doivent s'écouter avant de conclure",
+  "Eau-Air":"votre signe ressent profondément, la carte invite à prendre du recul : les deux se complètent bien ici",
+  "Feu-Air":"l'énergie de la carte et celle de votre signe se stimulent : c'est un moment propice à l'initiative",
+  "Air-Feu":"votre signe et la carte partagent la même envie de mouvement : profitez de cet élan commun",
+  "Terre-Eau":"la carte et votre signe cherchent tous deux la stabilité : c'est un socle solide pour avancer",
+  "Eau-Terre":"votre sensibilité et la stabilité de la carte se soutiennent : une base fiable pour construire"
+};
+function cardSignLink(card, signKey){
+  const t = card.element, i = ZODIAC_ELEMENT[signKey];
+  if (!t || !i) return "";
+  if (t === i) return `La carte ${card.name} porte la même énergie (${t}) que votre signe ${signLabel(signKey)} : ce thème vous concerne directement, sans détour`;
+  return VP_ELEMENT_LINK[`${t}-${i}`] || `La carte ${card.name} (${t}) et votre signe ${signLabel(signKey)} (${i}) demandent d'accorder la tête et le cœur avant de conclure`;
+}
+// Trait réel du chemin de vie — numérologie traditionnelle appliquée à la date de naissance
+const LIFE_PATH_TRAIT = {
+  1:"l'initiative et l'indépendance", 2:"la coopération et la sensibilité aux autres",
+  3:"l'expression et la créativité", 4:"la construction patiente et la solidité",
+  5:"le besoin de changement et de liberté", 6:"la responsabilité et l'attachement aux proches",
+  7:"l'introspection et la recherche de sens", 8:"l'ambition concrète et le sens de l'action",
+  9:"le don de soi et une vision large des choses",
+  11:"une intuition forte, presque un don de perception",
+  22:"la capacité à bâtir quelque chose de durable et de grande ampleur"
+};
+
+function cardPhrase(card){
+  const low = card.name.toLowerCase();
+  return (low.startsWith("l'") || low.startsWith("le ") || low.startsWith("la ")) ? card.name : "la carte "+card.name;
+}
+function drawThree(n){
+  const idxs = [];
+  while (idxs.length < 3){
+    const i = Math.floor(Math.random()*n);
+    if (!idxs.includes(i)) idxs.push(i);
+  }
+  return idxs;
+}
+// Délai réel — même moteur que VoyantPilote (vpTimingCue), basé sur le rang de la carte
+// Délais exprimés en unités claires (jours / semaines / mois / année) plutôt qu'en formules vagues —
+// demande explicite de Yann (2026-09-13) : le client veut un délai en jour/semaine/année, plus clair,
+// et la même phrase ("cela dépend surtout de la rapidité d'une personne...") revenait trop souvent.
+// Plusieurs variantes par palier, tirées au hasard, pour qu'aucune ne se répète à l'identique à chaque tirage.
+const TIMING_SHORT = [
+  "quelques jours à deux semaines",
+  "moins de deux semaines, souvent plus vite qu'on ne le pense",
+  "entre trois jours et deux semaines",
+  "un rythme rapide : de quelques jours à une quinzaine de jours"
+];
+const TIMING_MEDIUM = [
+  "environ trois à six semaines",
+  "quatre à six semaines, le temps qu'un ajustement se fasse",
+  "plutôt en semaines qu'en jours : autour d'un mois",
+  "trois à cinq semaines avant que les choses bougent vraiment"
+];
+const TIMING_LONG = [
+  "un à trois mois",
+  "en mois plutôt qu'en semaines : deux à trois mois",
+  "un rythme plus lent, entre six semaines et trois mois"
+];
+const TIMING_CULMINATION = [
+  "quelques semaines, un dénouement proche mais après un dernier palier",
+  "moins d'un mois : la dernière ligne droite",
+  "deux à quatre semaines avant que le cycle se referme"
+];
+const TIMING_PERSON = [
+  "quelques semaines — le rythme dépend surtout de la rapidité d'une personne à se décider",
+  "difficile à figer au jour près, mais comptez en semaines plutôt qu'en mois : tout dépend de la rapidité d'une personne",
+  "deux à quatre semaines, si la personne concernée ne traîne pas",
+  "entre deux et six semaines, selon la rapidité d'une tierce personne à trancher"
+];
+const TIMING_MAJEUR = [
+  "plusieurs semaines à quelques mois",
+  "en mois plutôt qu'en semaines — jusqu'à une année pour les mutations les plus profondes",
+  "un à quelques mois, parfois davantage pour un vrai tournant de vie",
+  "plutôt de l'ordre du trimestre que de la semaine"
+];
+function timingCue(card, reversed){
+  const rank = String(card.rank||"");
+  let pool;
+  if (card.arcana === "majeur") pool = TIMING_MAJEUR;
+  else if (["Valet","Cavalier","Reine","Roi"].some(p => rank.startsWith(p))) pool = TIMING_PERSON;
+  else if (["As","Deux","Trois"].includes(rank)) pool = TIMING_SHORT;
+  else if (["Quatre","Cinq","Six"].includes(rank)) pool = TIMING_MEDIUM;
+  else if (["Sept","Huit"].includes(rank)) pool = TIMING_LONG;
+  else if (["Neuf","Dix"].includes(rank)) pool = TIMING_CULMINATION;
+  else pool = TIMING_MEDIUM;
+  const base = pool[Math.floor(Math.random()*pool.length)];
+  return reversed ? `${base} — la carte renversée ajoute un délai supplémentaire` : base;
+}
+function lowerFirst(s){ return s ? s.charAt(0).toLowerCase()+s.slice(1) : s; }
+// Comme lowerFirst, mais ne touche jamais à "Nostrann" — un des PATH_CONNECTORS commence par ce nom
+// propre, et le rabaisser produit "nostrann" au milieu d'une phrase, ce qui n'est jamais correct.
+function lowerFirstSafe(s){ return (s && !s.startsWith("Nostrann")) ? lowerFirst(s) : s; }
+
+function buildPrediction({themeId, questionText, firstName, birthDate}){
+  const theme = themeById(themeId);
+  const domain = theme.domain;
+
+  const [i1,i2,i3] = drawThree(CARDS.length);
+  const c1 = CARDS[i1], c2 = CARDS[i2], c3 = CARDS[i3];
+  const r1 = Math.random() < 0.42, r2 = Math.random() < 0.42, r3 = Math.random() < 0.42;
+  const f1 = r1 ? c1.reversed : c1.upright;
+  const f2 = r2 ? c2.reversed : c2.upright;
+  const f3 = r3 ? c3.reversed : c3.upright;
+
+  const verdict = computeVerdict([{card:c1,reversed:r1},{card:c2,reversed:r2},{card:c3,reversed:r3}]);
+
+  const tone = toneFor(c3, r3);
+  const toneNow = toneFor(c1, r1);
+  const opener = OPENERS[Math.floor(Math.random()*OPENERS.length)];
+  const closer = CLOSERS_BY_TONE[tone][Math.floor(Math.random()*CLOSERS_BY_TONE[tone].length)];
+  const addressed = firstName ? firstName.trim() : "";
+  // La question posée reste, mot pour mot, le premier élément du bilan — jamais reformulée, jamais omise.
+  const question = questionText ? `« ${questionText} »` : (theme.phrase ? `Votre question ${theme.phrase}, posée au voile.` : "Votre chemin, posé au voile.");
+  const openingLine = domainText(f1, domain);
+  const timing = timingCue(c3, r3);
+
+  const sSignKey = sunSign(birthDate);
+  const lifePath = lifePathFromISO(birthDate);
+  const horo = birthDate ? buildHoroscope(birthDate) : null;
+  const horoLine = horo ? (domain==="love"?horo.love:domain==="work"?horo.work:domain==="money"?horo.money:null) : null;
+
+  // Lecture instinctive et humaine : peu de blocs, un vrai chemin vers l'avenir (présent → dénouement → délai)
+  // plutôt qu'une liste de constats détachés. Les OPENERS se terminent par un tiret pensé pour enchaîner —
+  // on le retire ici puisque la phrase se referme elle-même sur le prénom.
+  const openerClean = opener.replace(/\s*—\s*$/, "");
+  const intro = `${openerClean}${addressed ? ", " + addressed : ""}.`;
+
+  const toneAffirm = TONE_AFFIRM[toneNow][Math.floor(Math.random()*TONE_AFFIRM[toneNow].length)];
+  const profilClause = sSignKey
+    ? " " + cap(cardSignLink(c1, sSignKey)) + (lifePath ? `, et votre chemin de vie (numéro ${lifePath}) va dans le même sens : il porte ${LIFE_PATH_TRAIT[lifePath] || "une énergie singulière"}.` : ".")
+    : "";
+  const present = `${toneAffirm} ${lowerFirst(openingLine)}${profilClause}`;
+
+  const pathLead = PATH_LEADS[Math.floor(Math.random()*PATH_LEADS.length)];
+  const pathConnector = PATH_CONNECTORS[Math.floor(Math.random()*PATH_CONNECTORS.length)];
+  const pathBody = pathConnector(f2.challenge, f3.evolution);
+  // Le texte de la carte (ce qui freine / vers quoi cela mène) est générique par nature — ce pont le
+  // rattache explicitement au thème choisi, pour qu'une carte "argent" ne sonne jamais hors-sujet
+  // dans une lecture "amour" (audit du 2026-09-13, recommandation prioritaire).
+  const themeBridge = theme.phrase ? `Sur ce terrain ${theme.phrase}, ` : "";
+  let path = themeBridge ? (themeBridge + lowerFirstSafe(pathBody)) : pathBody;
+  if (horoLine){
+    path += ` Le ciel du jour appuie ce mouvement : ${lowerFirst(horoLine)}`;
+  }
+  path += ` Côté délai, ${timing}.`;
+
+  // La conviction s'adresse directement à la personne, par son prénom, pour que le conseil ne sonne jamais générique.
+  const adviceLead = ADVICE_LEADS[verdict.code][Math.floor(Math.random()*ADVICE_LEADS[verdict.code].length)];
+  const advice = `${adviceLead}${addressed ? " " + addressed + "," : ""} ${lowerFirst(c3.advice)}`;
+
+  // ciel du jour (réel, astronomie vérifiée) — note courte, le reste de l'astrologie est déjà tissé dans la réponse ci-dessus
+  const now = new Date();
+  const mSign = signLabel(moonSignKey(now));
+  const mPhase = moonPhase(now);
+  const dp = DAY_PLANET[now.getDay()];
+  let astro = `Ce ${dp[0]}, sous la régence de ${dp[1]}, la Lune traverse ${mSign} (${mPhase.name}, ${mPhase.illum}% éclairée).`;
+
+  // nombres des astres : combinaison réelle (tirage + ciel du jour + numérologie de naissance) — clin d'œil, pas une martingale
+  // proposé uniquement pour "Vie en général", pas systématiquement sur chaque bilan
+  let lucky = null;
+  if (themeId === "general"){
+    const cardEntries = [{card:c1,reversed:r1},{card:c2,reversed:r2},{card:c3,reversed:r3}];
+    const sSignIdx = sSignKey ? ZODIAC_KEY.indexOf(sSignKey) : null;
+    lucky = buildLuckyNumbers({
+      cardEntries, now,
+      moonLon: moonLongitude(now), moonIllum: mPhase.illum, dayIdx: now.getDay(),
+      lifePath: lifePathFromISO(birthDate), sunSignIdx: sSignIdx
+    });
+  }
+
+  // Horoscope complet : jour / semaine / mois / année, direct et sans jargon de source —
+  // affiché à part (panneau repliable), pour ne jamais alourdir le bilan principal.
+  const horoscope = birthDate ? buildFullHoroscope({ birthDate, sSignKey, now, mSign, mPhase, dp }) : null;
+
+  return {
+    themeId,
+    cards: [
+      {card:c1, reversed:r1, role:"Ce qui est"},
+      {card:c2, reversed:r2, role:"Ce qui se joue"},
+      {card:c3, reversed:r3, role:"Vers quoi cela mène"}
+    ],
+    verdict,
+    question: question.replace(/\s+/g," ").trim(),
+    intro: intro.replace(/\s+/g," ").trim(),
+    present: present.replace(/\s+/g," ").trim(),
+    pathLead: pathLead + " —",
+    path: path.replace(/\s+/g," ").trim(),
+    advice: advice.replace(/\s+/g," ").trim(),
+    closer: closer.replace(/\s+/g," ").trim(),
+    astro: astro.replace(/\s+/g," ").trim(),
+    lucky,
+    horoscope
+  };
+}
+function cap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s }
+
+/* ===================== Champ étoilé (canvas, léger) ===================== */
+(function initStars(){
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let w, h, stars = [];
+  function resize(){
+    w = c.width = window.innerWidth;
+    h = c.height = window.innerHeight;
+    const n = Math.min(140, Math.floor(w*h/9000));
+    stars = Array.from({length:n}, () => ({
+      x: Math.random()*w, y: Math.random()*h,
+      r: Math.random()*1.3+.2,
+      p: Math.random()*Math.PI*2,
+      s: Math.random()*.015+.005
+    }));
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function draw(t){
+    ctx.clearRect(0,0,w,h);
+    for (const st of stars){
+      const a = reduced ? .6 : (Math.sin(t*st.s + st.p)*.4+.6);
+      ctx.globalAlpha = Math.max(.05, a*.85);
+      ctx.fillStyle = '#e8e2ff';
+      ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (!reduced) requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+/* ===================== Interaction / rituel ===================== */
+const form = document.getElementById('askForm');
+const ritual = document.getElementById('ritual');
+const ritualText = document.getElementById('ritualText');
+const reveal = document.getElementById('reveal');
+const emblem = document.getElementById('emblem');
+const eyebrow = document.getElementById('eyebrow');
+const consultBtn = document.getElementById('consultBtn');
+const themeGrid = document.getElementById('themeGrid');
+const themeChips = Array.from(document.querySelectorAll('.theme-chip'));
+const questionField = document.getElementById('questionField');
+const questionGrid = document.getElementById('questionGrid');
+const verdictBanner = document.getElementById('verdictBanner');
+const verdictIcon = document.getElementById('verdictIcon');
+const verdictWord = document.getElementById('verdictWord');
+const verdictSubEl = document.getElementById('verdictSubEl');
+const verdictReasonEl = document.getElementById('verdictReasonEl');
+const cardFlips = [0,1,2].map(i => document.getElementById('cardFlip'+i));
+const cardGlyphs = [0,1,2].map(i => document.getElementById('cardGlyph'+i));
+const cardNames = [0,1,2].map(i => document.getElementById('cardName'+i));
+const cardOrients = [0,1,2].map(i => document.getElementById('cardOrient'+i));
+const bilanQuestionEl = document.getElementById('bilanQuestion');
+const bilanIntroEl = document.getElementById('bilanIntro');
+const bilanPresentEl = document.getElementById('bilanPresent');
+const bilanPathEl = document.getElementById('bilanPath');
+const bilanPathLeadEl = document.getElementById('bilanPathLead');
+const bilanPathTextEl = document.getElementById('bilanPathText');
+const bilanAdviceEl = document.getElementById('bilanAdvice');
+const bilanCloserEl = document.getElementById('bilanCloser');
+const astroNoteEl = document.getElementById('astroNote');
+const luckyRow = document.getElementById('luckyRow');
+const luckyBalls = document.getElementById('luckyBalls');
+const worldToggle = document.getElementById('worldToggle');
+const worldPanel = document.getElementById('worldPanel');
+const worldDayEl = document.getElementById('worldDay');
+const worldWeekEl = document.getElementById('worldWeek');
+const worldMonthEl = document.getElementById('worldMonth');
+const worldYearEl = document.getElementById('worldYear');
+const lockMessageEl = document.getElementById('lockMessage');
+const againBtn = document.getElementById('againBtn');
+const quitBtn = document.getElementById('quitBtn');
+
+worldToggle.addEventListener('click', () => {
+  worldPanel.classList.toggle('show');
+  worldToggle.textContent = worldPanel.classList.contains('show') ? '🔮 Refermer l\'horoscope complet' : '🔮 Horoscope complet';
+});
+
+/* ===================== Verrou quotidien : une même question, une seule fois par jour =====================
+   Protection demandée par Yann — un même client (même prénom + même date de naissance) ne peut pas
+   reposer mot pour mot la même question le même jour ; il doit attendre le lendemain pour un nouveau
+   tirage. Stockage côté navigateur (localStorage) : simple, sans dépendance externe, mais il protège
+   cet appareil/navigateur précis — un client qui change d'appareil ou vide son stockage local n'est pas
+   bloqué. C'est une limite assumée et communiquée, pas un vrai compte client. */
+const LOCK_STORAGE_KEY = 'nostrannDailyLocks_v1';
+function normLockPart(s){ return (s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function lockKeyFor(firstName, birthDate, questionText){
+  return normLockPart(firstName) + '|' + (birthDate || '') + '|' + normLockPart(questionText);
+}
+function readLocks(){
+  try {
+    const raw = localStorage.getItem(LOCK_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch(e){ return {}; }
+}
+function writeLocks(locks){
+  try { localStorage.setItem(LOCK_STORAGE_KEY, JSON.stringify(locks)); }
+  catch(e){ /* stockage indisponible (navigation privée, quota…) : le verrou est alors silencieusement inactif */ }
+}
+function pruneLocks(locks, todayStr){
+  const pruned = {};
+  Object.keys(locks).forEach(k => { if (locks[k] === todayStr) pruned[k] = locks[k]; });
+  return pruned;
+}
+function checkDailyLock(firstName, birthDate, questionText){
+  const todayStr = isoDate(new Date());
+  const locks = pruneLocks(readLocks(), todayStr);
+  return locks[lockKeyFor(firstName, birthDate, questionText)] === todayStr;
+}
+function registerDailyLock(firstName, birthDate, questionText){
+  const todayStr = isoDate(new Date());
+  const locks = pruneLocks(readLocks(), todayStr);
+  locks[lockKeyFor(firstName, birthDate, questionText)] = todayStr;
+  writeLocks(locks);
+}
+function hideLockMessage(){
+  lockMessageEl.hidden = true;
+  lockMessageEl.textContent = '';
+}
+function showLockMessage(firstName){
+  const addressed = firstName ? firstName.trim() : '';
+  lockMessageEl.textContent = `Nostrann a déjà répondu à cette question aujourd'hui${addressed ? ", " + addressed : ""}. Le voile ne se rouvre sur une même question qu'une fois par jour — revenez demain pour un nouveau tirage.`;
+  lockMessageEl.hidden = false;
+}
+
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let selectedTheme = null;
+let selectedQuestion = null;
+
+const fnameInput = document.getElementById('fname');
+const bdateInput = document.getElementById('bdate');
+
+function updateSubmitState(){
+  consultBtn.disabled = !(selectedTheme && selectedQuestion && fnameInput.value.trim() && bdateInput.value);
+  hideLockMessage();
+}
+fnameInput.addEventListener('input', updateSubmitState);
+bdateInput.addEventListener('input', updateSubmitState);
+
+function renderQuestionChips(theme){
+  questionGrid.innerHTML = '';
+  theme.questions.forEach(q => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'theme-chip question-chip';
+    btn.setAttribute('role','radio');
+    btn.setAttribute('aria-checked','false');
+    btn.textContent = q;
+    btn.addEventListener('click', function(){
+      Array.from(questionGrid.children).forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-checked','false'); });
+      btn.classList.add('selected');
+      btn.setAttribute('aria-checked','true');
+      selectedQuestion = q;
+      updateSubmitState();
+    });
+    questionGrid.appendChild(btn);
+  });
+  questionField.hidden = false;
+}
+
+themeChips.forEach(chip => {
+  chip.addEventListener('click', function(){
+    themeChips.forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-checked','false'); });
+    chip.classList.add('selected');
+    chip.setAttribute('aria-checked','true');
+    selectedTheme = chip.dataset.theme;
+    selectedQuestion = null;
+    renderQuestionChips(themeById(selectedTheme));
+    updateSubmitState();
+  });
+});
+
+const RITUAL_PHRASES = [
+  "Nostrann ouvre les voiles…",
+  "Les cartes se mélangent dans le silence…",
+  "Le ciel de cette nuit s'aligne…",
+  "Une image se précise…"
+];
+
+function elementGlyph(card){
+  return card.element === 'Feu' ? '🔥' : card.element === 'Eau' ? '💧' : card.element === 'Air' ? '🜁' : card.element === 'Terre' ? '🜃' : '✦';
+}
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  const firstName = fnameInput.value.trim();
+  const birthDate = bdateInput.value;
+  if (!selectedTheme || !selectedQuestion || !firstName || !birthDate) return;
+  const themeId = selectedTheme;
+  const questionText = selectedQuestion;
+
+  if (checkDailyLock(firstName, birthDate, questionText)){
+    showLockMessage(firstName);
+    return;
+  }
+  hideLockMessage();
+
+  form.style.display = 'none';
+  eyebrow.textContent = 'Nostrann consulte le voile';
+  reveal.classList.remove('show');
+  ritual.classList.add('show');
+  emblem.classList.add('awake');
+  consultBtn.disabled = true;
+
+  let phraseIdx = 0;
+  ritualText.textContent = RITUAL_PHRASES[0];
+  const phraseTimer = reducedMotion ? null : setInterval(() => {
+    phraseIdx = (phraseIdx+1) % RITUAL_PHRASES.length;
+    ritualText.textContent = RITUAL_PHRASES[phraseIdx];
+  }, 900);
+
+  const delay = reducedMotion ? 150 : 3600;
+  setTimeout(() => {
+    if (phraseTimer) clearInterval(phraseTimer);
+    ritual.classList.remove('show');
+    const result = buildPrediction({themeId, questionText, firstName, birthDate});
+    registerDailyLock(firstName, birthDate, questionText);
+    showReveal(result);
+  }, delay);
+});
+
+function showReveal(result){
+  eyebrow.textContent = 'Nostrann a parlé';
+  reveal.classList.add('show');
+  document.body.classList.add('is-revealing');
+
+  verdictBanner.className = 'verdict-banner ' + result.verdict.code.toLowerCase();
+  verdictIcon.textContent = result.verdict.icon;
+  verdictWord.textContent = result.verdict.code;
+  verdictSubEl.textContent = result.verdict.sub;
+  verdictReasonEl.textContent = result.verdict.reasoning;
+  // restart the entrance animation on every new reading
+  verdictBanner.style.animation = 'none';
+  void verdictBanner.offsetWidth;
+  verdictBanner.style.animation = '';
+
+  result.cards.forEach((entry, i) => {
+    cardFlips[i].classList.remove('flipped');
+    cardGlyphs[i].textContent = elementGlyph(entry.card);
+    cardNames[i].textContent = entry.card.name;
+    cardOrients[i].textContent = entry.reversed ? 'renversée' : "à l'endroit";
+  });
+  requestAnimationFrame(() => {
+    cardFlips.forEach((el, i) => setTimeout(() => el.classList.add('flipped'), i*220));
+  });
+
+  astroNoteEl.textContent = '';
+
+  bilanQuestionEl.textContent = result.question;
+  bilanIntroEl.textContent = result.intro;
+  bilanPresentEl.textContent = result.present;
+  bilanPathLeadEl.textContent = result.pathLead;
+  bilanPathTextEl.textContent = result.path;
+  bilanAdviceEl.textContent = result.advice;
+  bilanCloserEl.textContent = result.closer;
+
+  [bilanQuestionEl, bilanIntroEl, bilanPresentEl, bilanPathEl, bilanAdviceEl, bilanCloserEl].forEach(el => {
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    if (reducedMotion){
+      el.style.opacity = 1;
+    } else {
+      el.style.animation = '';
+    }
+  });
+
+  const rowsTotalTime = reducedMotion ? 0 : 2100;
+
+  luckyBalls.innerHTML = '';
+  if (result.lucky){
+    luckyRow.hidden = false;
+    result.lucky.main.forEach(n => {
+      const b = document.createElement('span');
+      b.className = 'lucky-ball';
+      b.textContent = n;
+      luckyBalls.appendChild(b);
+    });
+    const bonusB = document.createElement('span');
+    bonusB.className = 'lucky-ball bonus';
+    bonusB.textContent = result.lucky.bonus;
+    luckyBalls.appendChild(bonusB);
+  } else {
+    luckyRow.hidden = true;
+  }
+
+  // horoscope complet (jour / semaine / mois / année) — repliable, toujours refermé
+  // au début d'une nouvelle lecture pour ne jamais compromettre la tenue sur un écran
+  worldPanel.classList.remove('show');
+  worldToggle.textContent = '🔮 Horoscope complet';
+  if (result.horoscope){
+    worldToggle.hidden = false;
+    worldDayEl.textContent = result.horoscope.day;
+    worldWeekEl.textContent = result.horoscope.week;
+    worldMonthEl.textContent = result.horoscope.month;
+    worldYearEl.textContent = result.horoscope.year;
+  } else {
+    worldToggle.hidden = true;
+  }
+
+  const astroRevealTime = rowsTotalTime + 500;
+  setTimeout(() => {
+    astroNoteEl.textContent = result.astro;
+    astroNoteEl.style.opacity = 0;
+    astroNoteEl.style.transition = 'opacity 1s ease';
+    requestAnimationFrame(() => { astroNoteEl.style.opacity = 1; });
+    if (result.lucky){
+      luckyRow.style.opacity = 0;
+      luckyRow.style.transition = 'opacity 1s ease';
+      requestAnimationFrame(() => { luckyRow.style.opacity = 1; });
+    }
+  }, astroRevealTime);
+
+  consultBtn.disabled = false;
+}
+
+function resetToForm(clearIdentity){
+  reveal.classList.remove('show');
+  document.body.classList.remove('is-revealing');
+  emblem.classList.remove('awake');
+  eyebrow.textContent = "Adressez-vous à l'oracle";
+  themeChips.forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-checked','false'); });
+  questionGrid.innerHTML = '';
+  questionField.hidden = true;
+  selectedTheme = null;
+  selectedQuestion = null;
+  if (clearIdentity){
+    document.getElementById('fname').value = '';
+    document.getElementById('bdate').value = '';
+  }
+  hideLockMessage();
+  consultBtn.disabled = true;
+  form.style.display = '';
+}
+
+againBtn.addEventListener('click', function(){
+  // garde le prénom et la date de naissance déjà saisis
+  resetToForm(false);
+});
+
+quitBtn.addEventListener('click', function(){
+  // remet tout à zéro, y compris le prénom et la date de naissance
+  resetToForm(true);
+});
+</script>
+
+</body>
+</html>
