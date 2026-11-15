@@ -134,7 +134,41 @@ def main():
                        (depuis.isoformat(), debut_mois, auj.isoformat())).fetchall()
     ecarts = [(d, cpt, tiers, mt, raison, recent) for d, cpt, cat, tiers, mt, recent in ecarts
               if (raison := hors_role(cpt, cat, tiers, mt))]
+    # Une dépense payée avec la carte de l'autre compte est en règle si le bon compte la rembourse
+    # par virement (ex. Diagamter, Claude, Epson remboursés par le n° 1 ; courses remboursées par le n° 2) :
+    # même montant, nom noté dans le libellé du virement, ou somme de deux dépenses.
+    virements = [[dt.date.fromisoformat(d), round(mt, 2), (notes or "").lower(), False, a, b]
+                 for d, mt, notes, a, b in c.execute("""
+      select t.d, t.TRANSAMOUNT, t.NOTES, a.ACCOUNTNAME, b.ACCOUNTNAME from t
+      join ACCOUNTLIST_V1 a on a.ACCOUNTID=t.ACCOUNTID join ACCOUNTLIST_V1 b on b.ACCOUNTID=t.TOACCOUNTID
+      where t.TRANSCODE='Transfer' order by t.d""")]
+    rembourses = set()
+
+    def candidats(e):
+        return [v for v in virements if not v[3] and v[5] == e[1] and v[4] != e[1]
+                and ("CHARGES" in v[4].upper() or "ALIMENTATION" in v[4].upper())
+                and abs((v[0] - dt.date.fromisoformat(e[0])).days) <= 31]
+
+    for e in ecarts:
+        cle = "".join(ch for ch in e[2].lower() if ch.isalpha())[:4]
+        for v in candidats(e):
+            if abs(v[1] - e[3]) < 0.01 or (len(cle) == 4 and cle in v[2]):
+                v[3] = True
+                rembourses.add(e)
+                break
+    reste = [e for e in ecarts if e not in rembourses]
+    for i, e in enumerate(reste):
+        for f in reste[i + 1:]:
+            if e[1] != f[1] or e in rembourses or f in rembourses:
+                continue
+            v = next((v for v in candidats(e) if abs(v[1] - e[3] - f[3]) < 0.01), None)
+            if v:
+                v[3] = True
+                rembourses.update((e, f))
+    ecarts = [e for e in ecarts if e not in rembourses]
     print("Rôle des comptes (n° 1 = charges, n° 2 = vie courante), mois en cours :")
+    for d, cpt, tiers, mt, raison, recent in sorted(rembourses):
+        print(f"  - {d} | {cpt} | -{eur(mt)} | {tiers.strip()} → remboursé par virement de l'autre compte : OK")
     for d, cpt, tiers, mt, raison, recent in ecarts:
         print(f"  - {d} | {cpt} | -{eur(mt)} | {tiers.strip()} → {raison}")
         if recent:

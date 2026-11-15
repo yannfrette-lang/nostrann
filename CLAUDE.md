@@ -28,6 +28,7 @@ Principes :
 
 - **Compte n° 1 « CRCA Charges Valérie »** (reçoit le salaire de Valérie) : il paie **uniquement les charges** (crédits, assurances, énergie, eau, téléphone, abonnements, impôts). Quand il n'y aura plus de crédit immobilier à payer (après la vente de Blois), il paiera **les travaux au fur et à mesure**.
 - **Compte n° 2 « CRCA Alimentation Yann »** : il paie **uniquement la nourriture, l'essence, le coiffeur, les vêtements, les cadeaux et les restaurants** (c'est aussi lui qui alimente Revolut).
+- Exception admise : une charge payée avec la carte bleue du compte n° 2 (ex. diagnostic immobilier Diagamter, Claude, Epson) est en règle si le compte n° 1 la **rembourse par virement** vers le n° 2 (le libellé du virement reprend souvent le nom, ex. « Diagmenter »).
 - Signaler toute dépense passée sur le mauvais compte (l'outil d'analyse le fait). Ne jamais déplacer d'argent : proposer à Yann la correction.
 
 ## Analyse quotidienne des comptes MMEX
