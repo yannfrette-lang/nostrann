@@ -12,6 +12,10 @@ Yann ne veut pas avoir à tout répéter d'une conversation à l'autre.
   - Ne jamais mettre à la corbeille un autre fichier que l'ancienne version de ce document mémoire.
 - Fichier de comptes MMEX : `2026f.mmb` sur le Drive, en **lecture seule** ; Claude ne le modifie jamais.
 
+## Analyse quotidienne des comptes MMEX
+
+Chaque soir (tâche planifiée de 19 h 58), et chaque fois que Yann parle de ses comptes : télécharger `2026f.mmb` depuis le Drive (`download_file_content`, identifiant `1Z969srblJrc2mDBR2lDfjQkXBySczEce`), puis lancer `python3 -I outils/analyse_mmex.py <fichier téléchargé> --depuis <date de la dernière analyse>`. L'outil ouvre le fichier en **lecture seule** et donne : soldes, opérations nouvelles, dépenses du mois par catégorie, budget Revolut (1 300 €), mouvements prévus sur 7 jours, risques de découvert et un résumé d'une ligne pour le téléphone. Le revenu « Travail » de l'échéancier n'est pas compté, car il n'est pas garanti. Reporter dans la mémoire (section « Suivi des comptes ») la date de l'analyse, les soldes et les alertes, puis envoyer le résumé à Yann sur son téléphone.
+
 ## Base de données personnelle : mise à jour SYSTÉMATIQUE
 
 Le document « Claude – Mémoire Yann » est la base de données de la vie de Yann. Il veut que Claude le connaisse parfaitement, anticipe et l'aide au quotidien.
