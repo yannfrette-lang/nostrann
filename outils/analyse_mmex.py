@@ -146,6 +146,44 @@ def main():
             alertes.insert(0, f"DÉCOUVERT prévu sur « {nom} » d'ici 7 jours : {eur(s)} puis {eur(s + delta)}")
     print()
 
+    # Indicateurs de gestion « en bon père de famille »
+    def mois_precedent(d, n):
+        y, m = d.year, d.month - n
+        while m <= 0:
+            m += 12
+            y -= 1
+        return dt.date(y, m, 1)
+
+    def flux(debut, fin_excl):
+        r = c.execute("""
+          select coalesce(g.CATEGNAME,'?'), sum(case TRANSCODE when 'Deposit' then TRANSAMOUNT else -TRANSAMOUNT end)
+          from t left join CATEGORY_V1 g on g.CATEGID=t.CATEGID
+          where TRANSCODE<>'Transfer' and t.d>=? and t.d<? group by 1""", (debut.isoformat(), fin_excl.isoformat())).fetchall()
+        rev = sum(s for cat, s in r if any(k in cat.upper() for k in ("SALAIRE", "REVENU", "PLACEMENT")))
+        dep = -sum(s for cat, s in r if cat.upper().startswith("A") or cat == "?")
+        return rev, dep
+
+    debut_m = auj.replace(day=1)
+    stats = []
+    for n in (3, 2, 1):
+        d0 = mois_precedent(debut_m, n)
+        d1 = mois_precedent(debut_m, n - 1) if n > 1 else debut_m
+        stats.append((d0, *flux(d0, d1)))
+    print("Indicateurs (3 derniers mois complets, hors virements internes, achat immobilier et épargne) :")
+    for d0, rev, dep in stats:
+        taux = (rev - dep) / rev if rev else 0
+        print(f"  - {d0.strftime('%m/%Y')} : revenus {eur(rev)} | dépenses courantes {eur(dep)} | solde {eur(rev - dep)} | taux d'épargne {taux:.0%}")
+    dep_moy = sum(s[2] for s in stats) / 3
+    rev_moy = sum(s[1] for s in stats) / 3
+    mois_couverts = livrets / dep_moy if dep_moy else 0
+    rev_m, dep_m = flux(debut_m, auj + dt.timedelta(days=1))
+    print(f"  Moyenne : revenus {eur(rev_moy)} | dépenses courantes {eur(dep_moy)} par mois")
+    rythme = f"{dep_m / auj.day * 30:,.0f}".replace(",", " ")
+    print(f"  Mois en cours au jour {auj.day} : revenus {eur(rev_m)} | dépenses courantes {eur(dep_m)} (rythme : {rythme} € sur 30 jours)")
+    print(f"  Épargne de précaution : livrets {eur(livrets)} = {str(round(mois_couverts, 1)).replace('.', ',')} mois de dépenses courantes (objectif : 3 à 6 mois)\n")
+    if mois_couverts < 3:
+        alertes.append(f"épargne de précaution faible : {str(round(mois_couverts, 1)).replace('.', ',')} mois de dépenses")
+
     vieux = c.execute("select count(*) from t where coalesce(STATUS,'')<>'R' and d < ?",
                       ((auj - dt.timedelta(days=30)).isoformat(),)).fetchone()[0]
     if vieux:
