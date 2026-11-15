@@ -37,9 +37,7 @@ Principes :
 
 Chaque soir (tâche planifiée de 19 h 58), et chaque fois que Yann parle de ses comptes : télécharger `2026f.mmb` depuis le Drive (`download_file_content`, identifiant `1Z969srblJrc2mDBR2lDfjQkXBySczEce`), puis lancer `python3 -I outils/analyse_mmex.py <fichier téléchargé> --depuis <date de la dernière analyse>`. L'outil ouvre le fichier en **lecture seule** et donne : soldes, opérations nouvelles, dépenses du mois par catégorie, dépenses réelles de la carte Yann par semaine (objectif < 300 €) et réserve fictive « Revolut » restante, mouvements prévus sur 7 jours, risques de découvert et un résumé d'une ligne pour le téléphone. Le revenu « Travail » de l'échéancier n'est pas compté, car il n'est pas garanti. Reporter dans la mémoire (section « Suivi des comptes ») la date de l'analyse, les soldes et les alertes, puis envoyer le résumé à Yann sur son téléphone.
 
-**Envoi du résumé sur l'iPhone de Yann** : l'alerte Google Agenda seule (rappel « popup ») ne lui parvient pas. Utiliser les deux canaux :
-1. un événement Google Agenda « 📊 Comptes JJ/MM : … » à 20 h 30, sans invité, avec **deux rappels** : `{"method":"popup","minutes":0}` **et** `{"method":"email","minutes":0}` (Google envoie lui-même un e-mail de rappel, qui arrive dans Gmail sur l'iPhone) ;
-2. l'outil `PushNotification` (le charger avec ToolSearch « select:PushNotification »), avec le même texte, en moins de 200 caractères.
+**Envoi du résumé sur l'iPhone de Yann : un seul canal, l'e-mail** (décision de Yann du 15/11/2026). Créer un événement Google Agenda « 📊 Comptes JJ/MM : … » à 20 h 30, sans invité, avec **un seul rappel** : `{"method":"email","minutes":0}`. Google envoie alors lui-même un e-mail de rappel, qui arrive dans Gmail sur l'iPhone. **Pas** de rappel « popup », **pas** de `PushNotification`.
 
 Dans le titre, indiquer « carte X/300 € cette semaine » (et non plus le budget Revolut).
 
