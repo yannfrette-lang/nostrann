@@ -25,6 +25,42 @@ SEUIL_GROSSE_OPERATION = 500.0
 # Revenus prévus dans l'échéancier mais pas garantis (intérim de Yann) : exclus des prévisions.
 REVENUS_INCERTAINS = {"travail"}
 
+# Rôle de chaque compte courant (règle de Yann du 15/11/2026) :
+#  - n° 1 « CHARGES VALERIE » : uniquement les charges (crédits, assurances, énergie, eau,
+#    abonnements, impôts) ; après la fin des crédits immobiliers, les travaux au fur et à mesure.
+#  - n° 2 « ALIMENTATION YANN » : nourriture, essence, coiffeur, vêtements, cadeaux, restaurants,
+#    santé (médecins, pharmacie, Afflelou), tabac, achats Amazon, argent donné à Adèle et Pierre.
+# Les abonnements Amazon classés en charges fixes restent sur le n° 1.
+VIE_COURANTE = ("carrefour", "intermarch", "leclerc", "aldi", "lidl", "auchan", "grand frais",
+                "boulangerie", "patapain", "feuillette", "melvana", "restaurant", "mc donald",
+                "dominos", "coiffeur", "kiabi", "total", "esso", "carburant", "essence",
+                "station", "cadeau", "revolut",
+                # santé
+                "pharmacie", "afflelou", "opticien", "médecin", "medecin", "docteur", "dermatologue",
+                "podologue", "dentiste", "kiné", "kine", "laboratoire", "clinique", "radiolog", "cpam",
+                # tabac, Amazon, enfants
+                "tabac", "cigarette", "amazon", "adele", "adèle", "pierre")
+CHARGES = ("maif", "edf", "veolia", "orange", "canal", "sofinco", "cofidis", "mobilize",
+           "stelantis", "stellantis", "topolino", "tresor public", "diagamter", "notaire",
+           "brico", "leroy merlin", "travaux", "froeling", "epson", "microsoft", "google",
+           "apple", "ring alarme", "soch", "apgis")
+
+
+def hors_role(compte, categorie, tiers, montant):
+    """Renvoie la raison si la dépense n'est pas sur le bon compte, sinon None."""
+    n, cat, t = compte.upper(), (categorie or "").upper(), (tiers or "").strip().lower()
+    if "CHARGES" in n and "CHARGES FIXES" not in cat and (
+            "REVOLUT" in cat or t.startswith("dr ") or any(k in t for k in VIE_COURANTE)):
+        return "dépense de vie courante : à payer par le compte n° 2 Alimentation"
+    if "ALIMENTATION" in n:
+        if t.startswith("crédit agricole") and montant < 20:
+            return None  # frais de tenue du compte n° 2 lui-même
+        if "amazon" in t and "CHARGES FIXES" not in cat:
+            return None  # achats Amazon : compte n° 2 (abonnement Prime : charge du n° 1)
+        if "CHARGES FIXES" in cat or "CHAILLES" in cat or any(k in t for k in CHARGES):
+            return "charge ou travaux : à payer par le compte n° 1 Charges"
+    return None
+
 
 def ouvrir(chemin):
     with open(chemin, "rb") as f:
@@ -98,6 +134,58 @@ def main():
     print()
 
     debut_mois = auj.replace(day=1).isoformat()
+    ecarts = c.execute("""
+      select t.d, a.ACCOUNTNAME, coalesce(g.CATEGNAME,''), coalesce(p.PAYEENAME,''), t.TRANSAMOUNT,
+             substr(t.LASTUPDATEDTIME,1,10) >= ?
+      from t join ACCOUNTLIST_V1 a on a.ACCOUNTID=t.ACCOUNTID
+      left join PAYEE_V1 p on p.PAYEEID=t.PAYEEID left join CATEGORY_V1 g on g.CATEGID=t.CATEGID
+      where t.TRANSCODE='Withdrawal' and t.d>=? and t.d<=? order by t.d""",
+                       (depuis.isoformat(), debut_mois, auj.isoformat())).fetchall()
+    ecarts = [(d, cpt, tiers, mt, raison, recent) for d, cpt, cat, tiers, mt, recent in ecarts
+              if (raison := hors_role(cpt, cat, tiers, mt))]
+    # Une dépense payée avec la carte de l'autre compte est en règle si le bon compte la rembourse
+    # par virement (ex. Diagamter, Claude, Epson remboursés par le n° 1 ; courses remboursées par le n° 2) :
+    # même montant, nom noté dans le libellé du virement, ou somme de deux dépenses.
+    virements = [[dt.date.fromisoformat(d), round(mt, 2), (notes or "").lower(), False, a, b]
+                 for d, mt, notes, a, b in c.execute("""
+      select t.d, t.TRANSAMOUNT, t.NOTES, a.ACCOUNTNAME, b.ACCOUNTNAME from t
+      join ACCOUNTLIST_V1 a on a.ACCOUNTID=t.ACCOUNTID join ACCOUNTLIST_V1 b on b.ACCOUNTID=t.TOACCOUNTID
+      where t.TRANSCODE='Transfer' order by t.d""")]
+    rembourses = set()
+
+    def candidats(e):
+        return [v for v in virements if not v[3] and v[5] == e[1] and v[4] != e[1]
+                and ("CHARGES" in v[4].upper() or "ALIMENTATION" in v[4].upper())
+                and abs((v[0] - dt.date.fromisoformat(e[0])).days) <= 31]
+
+    for e in ecarts:
+        cle = "".join(ch for ch in e[2].lower() if ch.isalpha())[:4]
+        for v in candidats(e):
+            if abs(v[1] - e[3]) < 0.01 or (len(cle) == 4 and cle in v[2]):
+                v[3] = True
+                rembourses.add(e)
+                break
+    reste = [e for e in ecarts if e not in rembourses]
+    for i, e in enumerate(reste):
+        for f in reste[i + 1:]:
+            if e[1] != f[1] or e in rembourses or f in rembourses:
+                continue
+            v = next((v for v in candidats(e) if abs(v[1] - e[3] - f[3]) < 0.01), None)
+            if v:
+                v[3] = True
+                rembourses.update((e, f))
+    ecarts = [e for e in ecarts if e not in rembourses]
+    print("Rôle des comptes (n° 1 = charges, n° 2 = vie courante), mois en cours :")
+    for d, cpt, tiers, mt, raison, recent in sorted(rembourses):
+        print(f"  - {d} | {cpt} | -{eur(mt)} | {tiers.strip()} → remboursé par virement de l'autre compte : OK")
+    for d, cpt, tiers, mt, raison, recent in ecarts:
+        print(f"  - {d} | {cpt} | -{eur(mt)} | {tiers.strip()} → {raison}")
+        if recent:
+            alertes.append(f"mauvais compte : {tiers.strip()} {eur(mt)} sur « {cpt} »")
+    if not ecarts:
+        print("  (tout est sur le bon compte)")
+    print()
+
     rows = c.execute("""
       select coalesce(g.CATEGNAME,'?'), sum(case TRANSCODE when 'Deposit' then TRANSAMOUNT else -TRANSAMOUNT end)
       from t left join CATEGORY_V1 g on g.CATEGID=t.CATEGID
