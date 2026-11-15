@@ -25,6 +25,33 @@ SEUIL_GROSSE_OPERATION = 500.0
 # Revenus prévus dans l'échéancier mais pas garantis (intérim de Yann) : exclus des prévisions.
 REVENUS_INCERTAINS = {"travail"}
 
+# Rôle de chaque compte courant (règle de Yann du 15/11/2026) :
+#  - n° 1 « CHARGES VALERIE » : uniquement les charges (crédits, assurances, énergie, eau,
+#    abonnements, impôts) ; après la fin des crédits immobiliers, les travaux au fur et à mesure.
+#  - n° 2 « ALIMENTATION YANN » : nourriture, essence, coiffeur, vêtements, cadeaux, restaurants.
+# Santé, tabac, Amazon et autres dépenses non classées par Yann ne sont pas signalés.
+VIE_COURANTE = ("carrefour", "intermarch", "leclerc", "aldi", "lidl", "auchan", "grand frais",
+                "boulangerie", "patapain", "feuillette", "melvana", "restaurant", "mc donald",
+                "dominos", "coiffeur", "kiabi", "total", "esso", "carburant", "essence",
+                "station", "cadeau", "revolut")
+CHARGES = ("maif", "edf", "veolia", "orange", "canal", "sofinco", "cofidis", "mobilize",
+           "stelantis", "stellantis", "topolino", "tresor public", "diagamter", "notaire",
+           "brico", "leroy merlin", "travaux", "froeling", "epson", "microsoft", "google",
+           "apple", "ring alarme", "soch", "apgis")
+
+
+def hors_role(compte, categorie, tiers, montant):
+    """Renvoie la raison si la dépense n'est pas sur le bon compte, sinon None."""
+    n, cat, t = compte.upper(), (categorie or "").upper(), (tiers or "").strip().lower()
+    if "CHARGES" in n and ("REVOLUT" in cat or any(k in t for k in VIE_COURANTE)):
+        return "dépense de vie courante : à payer par le compte n° 2 Alimentation"
+    if "ALIMENTATION" in n:
+        if t.startswith("crédit agricole") and montant < 20:
+            return None  # frais de tenue du compte n° 2 lui-même
+        if "CHARGES FIXES" in cat or "CHAILLES" in cat or any(k in t for k in CHARGES):
+            return "charge ou travaux : à payer par le compte n° 1 Charges"
+    return None
+
 
 def ouvrir(chemin):
     with open(chemin, "rb") as f:
@@ -98,6 +125,24 @@ def main():
     print()
 
     debut_mois = auj.replace(day=1).isoformat()
+    ecarts = c.execute("""
+      select t.d, a.ACCOUNTNAME, coalesce(g.CATEGNAME,''), coalesce(p.PAYEENAME,''), t.TRANSAMOUNT,
+             substr(t.LASTUPDATEDTIME,1,10) >= ?
+      from t join ACCOUNTLIST_V1 a on a.ACCOUNTID=t.ACCOUNTID
+      left join PAYEE_V1 p on p.PAYEEID=t.PAYEEID left join CATEGORY_V1 g on g.CATEGID=t.CATEGID
+      where t.TRANSCODE='Withdrawal' and t.d>=? and t.d<=? order by t.d""",
+                       (depuis.isoformat(), debut_mois, auj.isoformat())).fetchall()
+    ecarts = [(d, cpt, tiers, mt, raison, recent) for d, cpt, cat, tiers, mt, recent in ecarts
+              if (raison := hors_role(cpt, cat, tiers, mt))]
+    print("Rôle des comptes (n° 1 = charges, n° 2 = vie courante), mois en cours :")
+    for d, cpt, tiers, mt, raison, recent in ecarts:
+        print(f"  - {d} | {cpt} | -{eur(mt)} | {tiers.strip()} → {raison}")
+        if recent:
+            alertes.append(f"mauvais compte : {tiers.strip()} {eur(mt)} sur « {cpt} »")
+    if not ecarts:
+        print("  (tout est sur le bon compte)")
+    print()
+
     rows = c.execute("""
       select coalesce(g.CATEGNAME,'?'), sum(case TRANSCODE when 'Deposit' then TRANSAMOUNT else -TRANSAMOUNT end)
       from t left join CATEGORY_V1 g on g.CATEGID=t.CATEGID

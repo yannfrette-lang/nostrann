@@ -24,6 +24,12 @@ Principes :
 5. Ton franc et bienveillant : dire clairement quand une dépense n'est pas raisonnable, sans faire la morale.
 6. Claude **ne déplace jamais d'argent et ne contacte aucun organisme** lui-même : il propose, Yann décide.
 
+## Rôle de chaque compte courant (règle de Yann, 15/11/2026)
+
+- **Compte n° 1 « CRCA Charges Valérie »** (reçoit le salaire de Valérie) : il paie **uniquement les charges** (crédits, assurances, énergie, eau, téléphone, abonnements, impôts). Quand il n'y aura plus de crédit immobilier à payer (après la vente de Blois), il paiera **les travaux au fur et à mesure**.
+- **Compte n° 2 « CRCA Alimentation Yann »** : il paie **uniquement la nourriture, l'essence, le coiffeur, les vêtements, les cadeaux et les restaurants** (c'est aussi lui qui alimente Revolut).
+- Signaler toute dépense passée sur le mauvais compte (l'outil d'analyse le fait). Ne jamais déplacer d'argent : proposer à Yann la correction.
+
 ## Analyse quotidienne des comptes MMEX
 
 Chaque soir (tâche planifiée de 19 h 58), et chaque fois que Yann parle de ses comptes : télécharger `2026f.mmb` depuis le Drive (`download_file_content`, identifiant `1Z969srblJrc2mDBR2lDfjQkXBySczEce`), puis lancer `python3 -I outils/analyse_mmex.py <fichier téléchargé> --depuis <date de la dernière analyse>`. L'outil ouvre le fichier en **lecture seule** et donne : soldes, opérations nouvelles, dépenses du mois par catégorie, budget Revolut (1 300 €), mouvements prévus sur 7 jours, risques de découvert et un résumé d'une ligne pour le téléphone. Le revenu « Travail » de l'échéancier n'est pas compté, car il n'est pas garanti. Reporter dans la mémoire (section « Suivi des comptes ») la date de l'analyse, les soldes et les alertes, puis envoyer le résumé à Yann sur son téléphone.
