@@ -23,13 +23,13 @@ Le document « Claude – Mémoire Yann » est la base de données de la vie de 
 
 ## Rangement des scans : dossier « DOCUMENTS EN ATTENTES »
 
-Yann scanne ses papiers dans le dossier Drive « DOCUMENTS EN ATTENTES » (identifiant `1DLcLIbOmqaWiyJNP6hV_xOlSBPzbTjxk`). Une tâche planifiée tourne chaque soir, et Claude le fait aussi dès que Yann en parle. Pour chaque fichier :
+Yann scanne ses papiers dans le dossier Drive « DOCUMENTS EN ATTENTES » (identifiant `1DLcLIbOmqaWiyJNP6hV_xOlSBPzbTjxk`). **Ne jamais attendre qu'il dise « j'ai scanné »** : la tâche planifiée du soir vérifie ce dossier chaque jour, et Claude le vérifie aussi **au début de chaque conversation**, quel que soit le sujet. Chaque document rangé est **en même temps enregistré dans la mémoire** (son contenu utile, pas seulement son nom). Pour chaque fichier :
 
 1. **Lire** le document (`read_file_content`). Si c'est un scan sans texte : `download_file_content`, conversion en image avec `pdftoppm`, puis lecture de l'image.
 2. **Identifier** la personne concernée, l'organisme, le type de document et sa date.
 3. **Renommer** avec Drive `update_file` selon le modèle « Type Organisme MoisAnnée.pdf », mois en toutes lettres (ex. « Facture Edf Novembre2026.pdf », « Releve Compte Juin2024.pdf »).
 4. **Déplacer** (`update_file`, `parentId`) dans le bon dossier de `DOCUMENTS` (par personne ou par sujet : YANN, VALERIE, ADELE, PIERRE, JULIA, NICOLAS, BANQUE FAMILLE, HABITATION CHAILLES, HABITATION BLOIS, AUTOMOBILES, TRESOR PUBLIC…), dans le sous-dossier de l'année ; le créer s'il n'existe pas.
-5. **Reporter dans la mémoire** ce qui est utile : montants, échéances, décisions, nouveaux contrats.
+5. **Enregistrer dans la mémoire**, au moment même du rangement, tout ce que le document apprend : organisme, montants, dates, échéances (à ajouter aussi dans « Prochaines actions » et dans Google Agenda), décisions, nouveaux contrats, changements de situation, et où le document est rangé.
 6. Ne jamais toucher au sous-dossier « MMEX_2026f_Attachments » ni à son contenu.
 7. Si le classement est incertain, ou si la page est blanche ou illisible : laisser le fichier en attente et le signaler à Yann. **Ne jamais supprimer un scan sans son accord.**
 8. Dire à Yann ce qui a été rangé, sous quel nom et où.
