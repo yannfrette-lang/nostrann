@@ -19,7 +19,11 @@ import sqlite3
 import sys
 import tempfile
 
-BUDGET_REVOLUT = 1300.0
+BUDGET_REVOLUT = 1300.0   # budget mensuel de la carte Yann (compte n° 2)
+BUDGET_SEMAINE = 300.0    # objectif de Yann : moins de 300 € par semaine avec sa carte
+# Depuis novembre 2026, « Revolut » dans MMEX n'est plus un vrai virement : c'est une réserve
+# fictive (enveloppe) pour les dépenses à venir de la carte Yann. Elle n'est pas comptée comme
+# dépense réelle, mais reste dans la prévision de découvert (prudence).
 SEUIL_COMPTE_BAS = 100.0
 SEUIL_GROSSE_OPERATION = 500.0
 # Revenus prévus dans l'échéancier mais pas garantis (intérim de Yann) : exclus des prévisions.
@@ -129,7 +133,7 @@ def main():
     for d, compte, code, mt, tiers, cat, notes in nouv:
         signe = "+" if code == "Deposit" else ("→" if code == "Transfer" else "-")
         print(f"  - {d} | {compte} | {signe}{eur(mt)} | {tiers} | {cat} {('| ' + notes.strip()) if notes.strip() else ''}")
-        if code != "Transfer" and mt >= SEUIL_GROSSE_OPERATION:
+        if code != "Transfer" and mt >= SEUIL_GROSSE_OPERATION and not tiers.strip().lower().startswith("revolut"):
             alertes.append(f"opération importante : {signe}{eur(mt)} {tiers} le {d}")
     print()
 
@@ -196,10 +200,46 @@ def main():
         print(f"  - {cat} : {eur(s)}")
         if "REVOLUT" in cat.upper():
             revolut = -s
-    jour = auj.day
-    print(f"  Revolut : {eur(revolut)} sur un budget de {eur(BUDGET_REVOLUT)} ({revolut / BUDGET_REVOLUT:.0%} au jour {jour})\n")
+    print()
+
+    # Dépenses RÉELLES de la carte Yann (compte n° 2) : hors réserve fictive « Revolut »,
+    # hors charges (crédits, abonnements, diagnostics… remboursés par le n° 1).
+    def carte_yann(d0, d1):
+        tot = 0.0
+        for cpt, cat, tiers, mt in c.execute("""
+          select a.ACCOUNTNAME, coalesce(g.CATEGNAME,''), coalesce(p.PAYEENAME,''), t.TRANSAMOUNT
+          from t join ACCOUNTLIST_V1 a on a.ACCOUNTID=t.ACCOUNTID
+          left join PAYEE_V1 p on p.PAYEEID=t.PAYEEID left join CATEGORY_V1 g on g.CATEGID=t.CATEGID
+          where t.TRANSCODE='Withdrawal' and a.ACCOUNTNAME like '%ALIMENTATION%' and t.d>=? and t.d<=?""",
+                                            (d0.isoformat(), d1.isoformat())):
+            if tiers.strip().lower().startswith("revolut") or "ECONOMIE" in cat.upper():
+                continue
+            if hors_role(cpt, cat, tiers, mt):
+                continue
+            tot += mt
+        return tot
+
+    lundi = auj - dt.timedelta(days=auj.weekday())
+    print(f"Carte Yann, dépenses réelles (objectif : moins de {eur(BUDGET_SEMAINE)} par semaine) :")
+    for k in (3, 2, 1):
+        l0 = lundi - dt.timedelta(weeks=k)
+        s_ = carte_yann(l0, l0 + dt.timedelta(days=6))
+        print(f"  - semaine du {l0.strftime('%d/%m')} : {eur(s_)}" + ("  ⚠ au-dessus" if s_ > BUDGET_SEMAINE else ""))
+    semaine = carte_yann(lundi, auj)
+    print(f"  - semaine en cours (du {lundi.strftime('%d/%m')}, jour {auj.weekday() + 1}/7) : {eur(semaine)}")
+    revolut = carte_yann(auj.replace(day=1), auj)
+    fin_mois = (auj.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
+    reserve = c.execute("""
+      select coalesce(sum(t.TRANSAMOUNT),0) from t join PAYEE_V1 p on p.PAYEEID=t.PAYEEID
+      join ACCOUNTLIST_V1 a on a.ACCOUNTID=t.ACCOUNTID
+      where t.TRANSCODE='Withdrawal' and lower(p.PAYEENAME) like 'revolut%' and a.ACCOUNTNAME like '%ALIMENTATION%'
+        and t.d>? and t.d<=?""", (auj.isoformat(), fin_mois.isoformat())).fetchone()[0]
+    print(f"  Mois en cours : {eur(revolut)} dépensés + réserve fictive « Revolut » restante {eur(reserve)}"
+          f" = {eur(revolut + reserve)} pour un budget de {eur(BUDGET_REVOLUT)}\n")
+    if semaine > BUDGET_SEMAINE:
+        alertes.insert(0, f"carte Yann : {eur(semaine)} cette semaine, objectif {eur(BUDGET_SEMAINE)}")
     if revolut > BUDGET_REVOLUT:
-        alertes.insert(0, f"budget Revolut dépassé : {eur(revolut)} / {eur(BUDGET_REVOLUT)}")
+        alertes.insert(0, f"budget mensuel carte Yann dépassé : {eur(revolut)} / {eur(BUDGET_REVOLUT)}")
 
     fin = (auj + dt.timedelta(days=7)).isoformat()
     prevus = c.execute("""
@@ -224,7 +264,8 @@ def main():
             print(f"  - {d} | {nom} | +{eur(mt)} | {tiers} ({source}, revenu incertain : NON compté)")
         else:
             signe = "+" if code == "Deposit" else "-"
-            print(f"  - {d} | {nom} | {signe}{eur(mt)} | {tiers} {notes.strip()} ({source})")
+            fictif = " (réserve fictive carte Yann)" if tiers.strip().lower().startswith("revolut") else ""
+            print(f"  - {d} | {nom} | {signe}{eur(mt)} | {tiers}{fictif} {notes.strip()} ({source})")
             besoin[acc] = besoin.get(acc, 0) + (mt if code == "Deposit" else -mt)
     if not prevus:
         print("  (rien)")
@@ -280,7 +321,7 @@ def main():
     print("Alertes :")
     for x in alertes or ["aucune"]:
         print(f"  - {x}")
-    resume = f"Comptes {auj.strftime('%d/%m')} : courants {eur(courants)}, livrets {eur(livrets)}, Revolut {eur(revolut)}/{eur(BUDGET_REVOLUT)}"
+    resume = f"Comptes {auj.strftime('%d/%m')} : courants {eur(courants)}, livrets {eur(livrets)}, carte Yann semaine {eur(semaine)}/{eur(BUDGET_SEMAINE)}"
     resume += f". {len(nouv)} nouvelle(s) op." + (f" ⚠ {alertes[0]}" if alertes else " RAS")
     print("\nRÉSUMÉ TÉLÉPHONE : " + resume[:200])
 
