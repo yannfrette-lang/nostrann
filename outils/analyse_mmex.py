@@ -28,12 +28,18 @@ REVENUS_INCERTAINS = {"travail"}
 # Rôle de chaque compte courant (règle de Yann du 15/11/2026) :
 #  - n° 1 « CHARGES VALERIE » : uniquement les charges (crédits, assurances, énergie, eau,
 #    abonnements, impôts) ; après la fin des crédits immobiliers, les travaux au fur et à mesure.
-#  - n° 2 « ALIMENTATION YANN » : nourriture, essence, coiffeur, vêtements, cadeaux, restaurants.
-# Santé, tabac, Amazon et autres dépenses non classées par Yann ne sont pas signalés.
+#  - n° 2 « ALIMENTATION YANN » : nourriture, essence, coiffeur, vêtements, cadeaux, restaurants,
+#    santé (médecins, pharmacie, Afflelou), tabac, achats Amazon, argent donné à Adèle et Pierre.
+# Les abonnements Amazon classés en charges fixes restent sur le n° 1.
 VIE_COURANTE = ("carrefour", "intermarch", "leclerc", "aldi", "lidl", "auchan", "grand frais",
                 "boulangerie", "patapain", "feuillette", "melvana", "restaurant", "mc donald",
                 "dominos", "coiffeur", "kiabi", "total", "esso", "carburant", "essence",
-                "station", "cadeau", "revolut")
+                "station", "cadeau", "revolut",
+                # santé
+                "pharmacie", "afflelou", "opticien", "médecin", "medecin", "docteur", "dermatologue",
+                "podologue", "dentiste", "kiné", "kine", "laboratoire", "clinique", "radiolog", "cpam",
+                # tabac, Amazon, enfants
+                "tabac", "cigarette", "amazon", "adele", "adèle", "pierre")
 CHARGES = ("maif", "edf", "veolia", "orange", "canal", "sofinco", "cofidis", "mobilize",
            "stelantis", "stellantis", "topolino", "tresor public", "diagamter", "notaire",
            "brico", "leroy merlin", "travaux", "froeling", "epson", "microsoft", "google",
@@ -43,11 +49,14 @@ CHARGES = ("maif", "edf", "veolia", "orange", "canal", "sofinco", "cofidis", "mo
 def hors_role(compte, categorie, tiers, montant):
     """Renvoie la raison si la dépense n'est pas sur le bon compte, sinon None."""
     n, cat, t = compte.upper(), (categorie or "").upper(), (tiers or "").strip().lower()
-    if "CHARGES" in n and ("REVOLUT" in cat or any(k in t for k in VIE_COURANTE)):
+    if "CHARGES" in n and "CHARGES FIXES" not in cat and (
+            "REVOLUT" in cat or t.startswith("dr ") or any(k in t for k in VIE_COURANTE)):
         return "dépense de vie courante : à payer par le compte n° 2 Alimentation"
     if "ALIMENTATION" in n:
         if t.startswith("crédit agricole") and montant < 20:
             return None  # frais de tenue du compte n° 2 lui-même
+        if "amazon" in t and "CHARGES FIXES" not in cat:
+            return None  # achats Amazon : compte n° 2 (abonnement Prime : charge du n° 1)
         if "CHARGES FIXES" in cat or "CHAILLES" in cat or any(k in t for k in CHARGES):
             return "charge ou travaux : à payer par le compte n° 1 Charges"
     return None
