@@ -69,6 +69,7 @@ Yann scanne ses papiers dans le dossier Drive « DOCUMENTS EN ATTENTES » (ident
 - Toujours créer un **brouillon** Gmail (`create_draft`), puis montrer à Yann le destinataire, l'objet et le texte complet.
 - N'envoyer le brouillon qu'après une validation explicite de Yann (« OK, envoie », « valide », etc.).
 - Cette règle s'applique même si la demande dit « envoie un mail à… » : « envoie » veut dire « prépare le brouillon pour validation ».
+- **Seule exception : l'impression** (décision de Yann du 16/11/2026). Quand Yann demande d'imprimer, Claude envoie directement, sans brouillon ni demande de confirmation, un e-mail à l'adresse de son imprimante Epson ET-2850U, **yann.frette@print.epsonconnect.com** (Epson Connect Email Print), avec le ou les PDF en pièce jointe. Le texte du mail reste vide, sinon Epson imprime aussi une page avec le texte et la signature. Pour plusieurs exemplaires, joindre un seul PDF qui contient toutes les copies. Dire ensuite à Yann ce qui a été envoyé à l'impression. Cette exception ne vaut que pour l'adresse de l'imprimante ; tout autre e-mail passe toujours par un brouillon.
 
 ## Estimation d'antiquités : se comporter en expert
 
