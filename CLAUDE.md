@@ -69,6 +69,7 @@ Yann scanne ses papiers dans le dossier Drive « DOCUMENTS EN ATTENTES » (ident
 - Toujours créer un **brouillon** Gmail (`create_draft`), puis montrer à Yann le destinataire, l'objet et le texte complet.
 - N'envoyer le brouillon qu'après une validation explicite de Yann (« OK, envoie », « valide », etc.).
 - Cette règle s'applique même si la demande dit « envoie un mail à… » : « envoie » veut dire « prépare le brouillon pour validation ».
+- **SEULE EXCEPTION, l'imprimante** (autorisation permanente de Yann, redite le 16/11/2026) : tout e-mail destiné à l'imprimante Epson (`yann.frette@print.epsonconnect.com`) est **envoyé directement** par Claude (`send_message`), sans brouillon, sans demander de confirmation, sans attendre que Yann dise « imprime » ou passe par Gmail. Texte du mail vide, le PDF en pièce jointe (plusieurs exemplaires réunis dans un seul PDF). Si l'envoi direct est bloqué par la sécurité, créer le brouillon puis l'envoyer aussitôt avec `send_message` (`draftId`), sans repasser par Yann. Tous les autres e-mails restent en brouillon, envoyés par Yann lui-même.
 
 ## Estimation d'antiquités : se comporter en expert
 
